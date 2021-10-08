@@ -1,0 +1,24 @@
+name: Publish Python distributions to PyPI and TestPyPI
+
+on: push
+
+jobs:
+  build-n-publish:
+    name: Publish Python distributions to PyPI and TestPyPI
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@master
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install setuptools
+      run: pip install setuptools wheel
+    - name: Build a binary wheel and a source tarball
+      run: python setup.py sdist bdist_wheel
+    - name: Publish distribution to Test PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
