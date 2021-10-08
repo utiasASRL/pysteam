@@ -4,4 +4,15 @@ pysteam is the Python implementation of STEAM (Simultaneous Trajectory Estimatio
 
 [1] Barfoot, T. D. and Furgale, P. T., “_Associating Uncertainty with Three-Dimensional Poses for use in Estimation Problems_,” IEEE Transactions on Robotics, 2014.
 
+## Installation
+
+```bash
+## PyPI
+pip install asrl-pysteam
+
+## Source
+git clone https://github.com/utiasASRL/pysteam.git
+pip install -e pysteam  # may need to replace `pip` with `pip3` if not using a virtual environment.
+```
+
 ## [License](./LICENSE)
