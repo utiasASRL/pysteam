@@ -76,7 +76,10 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
       A*x = b, A = (J^T*J + diagonalCoeff*diag(J^T*J))
     """
     # augment diagonal of the 'hessian' matrix
-    np.fill_diagonal(A, np.diag(A) * (1 + self._diag_coeff))
+    if self._parameters["use_sparse_matrix"]:
+      A.setdiag(A.diagonal() * (1 + self._diag_coeff))
+    else:
+      np.fill_diagonal(A, np.diag(A) * (1 + self._diag_coeff))
 
     # solve system
     try:
@@ -85,7 +88,10 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
       raise npla.LinAlgError('Decomposition Failure')
     finally:
       # revert diagonal of the 'hessian' matrix
-      np.fill_diagonal(A, np.diag(A) / (1 + self._diag_coeff))
+      if self._parameters["use_sparse_matrix"]:
+        A.setdiag(A.diagonal() / (1 + self._diag_coeff))
+      else:
+        np.fill_diagonal(A, np.diag(A) / (1 + self._diag_coeff))
 
     return lev_marq_step
 
