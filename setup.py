@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setuptools.setup(
     name="asrl-pysteam",
-    version="1.0.2",
+    version="1.0.3",
     author="Yuchen Wu",
     author_email="cheney.wu@mail.utoronto.ca",
     description="Python implementation of steam",
