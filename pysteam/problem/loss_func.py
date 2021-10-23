@@ -20,3 +20,6 @@ class L2LossFunc(LossFunc):
 
   def weight(self, whitened_error_norm: float):
     return 1.0
+
+
+# TODO: more robust loss functions

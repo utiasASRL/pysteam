@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 import numpy as np
+from scipy.sparse import lil_matrix
 
 from ..state import StateVar, StateVector
 from . import CostTerm
@@ -33,11 +34,11 @@ class OptimizationProblem:
     """Gets the total number of cost terms."""
     return len(self._cost_terms)
 
-  def build_gauss_newton_terms(self, state_vector: StateVector) -> Tuple[np.ndarray, np.ndarray]:
+  def build_gauss_newton_terms(self, state_vector: StateVector, sparse: bool) -> Tuple[np.ndarray, np.ndarray]:
     """Computes the left-hand approximated Hessian (A) and right-hand gradient vector (b)."""
     state_size = state_vector.get_state_size()
-    A = np.zeros((state_size, state_size))
+    A = lil_matrix((state_size, state_size)) if sparse else np.zeros((state_size, state_size))
     b = np.zeros((state_size, 1))
     for cost_term in self._cost_terms:
       cost_term.build_gauss_newton_terms(state_vector, A, b)
-    return A, b
+    return A.tocsr() if sparse else A, b

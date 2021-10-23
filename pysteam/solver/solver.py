@@ -151,4 +151,4 @@ class Solver(abc.ABC):
 
   @abc.abstractmethod
   def linearize_solve_and_update(self) -> None:
-    """Build the system, solve for a step size and direction, and update the state"""
+    """Build the linear system, solve for a step size and direction, and update the state"""

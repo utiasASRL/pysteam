@@ -28,12 +28,12 @@ class Estimator:
 
     # stereo camera and imu
     C_cv, rho_cv_inv = data["C_c_v"], data["rho_v_c_v"]
-    self.T_cv = se3op.Cr2T(C_cv, -C_cv @ rho_cv_inv)
+    self.T_cv = se3op.Cr2T(C_ab=C_cv, r_ba_ina=-C_cv @ rho_cv_inv)
 
     # ground truth values
     r_vi_ini = data["r_i_vk_i"].T[..., None]
     C_vi = so3op.vec2rot(data["theta_vk_i"].T[..., None]).swapaxes(-1, -2)
-    self.T_vi = se3op.Cr2T(C_vi, -C_vi @ r_vi_ini)  # this is the ground truth
+    self.T_vi = se3op.Cr2T(C_ab=C_vi, r_ba_ina=-C_vi @ r_vi_ini)  # this is the ground truth
 
     # inputs
     w_vi_inv, v_vi_inv = data["w_vk_vk_i"].T, data["v_vk_vk_i"].T
@@ -132,7 +132,7 @@ class Estimator:
     opt_prob.add_state_var(*T_k0_vars)
 
     # construct the solver and solve
-    optimizer = solver.GaussNewtonSolver(opt_prob, verbose=True)
+    optimizer = solver.GaussNewtonSolver(opt_prob, verbose=True, use_sparse_matrix=True)
     optimizer.optimize()
 
     # copy variables back
@@ -150,9 +150,9 @@ class Estimator:
     k1 = self.k1 if k1 is None else k1
     k2 = self.k2 if k2 is None else k2
 
-    C_vi, r_iv_inv = se3op.T2Cr(self.T_vi)
+    C_vi, r_iv_inv = se3op.T2Cr(T_ab=self.T_vi)
     r_vi_ini = -C_vi.swapaxes(-2, -1) @ r_iv_inv
-    hat_C_vi, hat_r_iv_inv = se3op.T2Cr(self.hat_T_vi)
+    hat_C_vi, hat_r_iv_inv = se3op.T2Cr(T_ab=self.hat_T_vi)
     hat_r_vi_ini = -hat_C_vi.swapaxes(-2, -1) @ hat_r_iv_inv
 
     ax = fig.add_subplot(111, projection='3d')
@@ -171,9 +171,9 @@ class Estimator:
     k1 = self.k1 if k1 is None else k1
     k2 = self.k2 if k2 is None else k2
 
-    C_vi, r_iv_inv = se3op.T2Cr(self.T_vi)
+    C_vi, r_iv_inv = se3op.T2Cr(T_ab=self.T_vi)
     r_vi_ini = -C_vi.swapaxes(-2, -1) @ r_iv_inv
-    hat_C_vi, hat_r_iv_inv = se3op.T2Cr(self.hat_T_vi)
+    hat_C_vi, hat_r_iv_inv = se3op.T2Cr(T_ab=self.hat_T_vi)
     hat_r_vi_ini = -hat_C_vi.swapaxes(-2, -1) @ hat_r_iv_inv
 
     eye = np.zeros_like(C_vi)

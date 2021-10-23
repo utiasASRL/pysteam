@@ -8,10 +8,14 @@ class LandmarkStateVar(StateVar):
   """Variable wrapper of 4x1 numpy array as homogeneous coordinate of a landmark."""
 
   def __init__(self, value: np.ndarray, *, scale: bool = True, **kwargs) -> None:
-    super().__init__(value, 3, **kwargs)
+    super().__init__(3, **kwargs)
     assert value.shape == (4, 1)
+    self._value = value
     self._scale = scale
     self.refresh_homo_scalling()
+
+  def clone(self):
+    raise NotImplementedError
 
   def get_value(self) -> np.ndarray:
     return self._value
@@ -23,9 +27,6 @@ class LandmarkStateVar(StateVar):
   def update(self, perturbation: np.ndarray) -> None:
     self._value += perturbation
     self.refresh_homo_scalling()
-
-  def clone(self):
-    raise NotImplementedError
 
   def refresh_homo_scalling(self) -> None:
     if self._scale:

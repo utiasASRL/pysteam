@@ -1,6 +1,7 @@
 import numpy as np
 import numpy.linalg as npla
 import scipy.linalg as spla
+import scipy.sparse.linalg as spla_sparse
 
 from . import Solver
 from ..problem import OptimizationProblem
@@ -11,6 +12,9 @@ class GaussNewtonSolver(Solver):
   def __init__(self, problem: OptimizationProblem, **parameters) -> None:
     super().__init__(problem, **parameters)
     # override parameters
+    self._parameters.update({
+        "use_sparse_matrix": True,
+    })
     self._parameters.update(**parameters)
 
     # for covariance query
@@ -37,13 +41,22 @@ class GaussNewtonSolver(Solver):
 
   def build_gauss_newton_terms(self) -> tuple:
     """Returns the LHS and RHS of the linear system: A, b."""
-    return self._problem.build_gauss_newton_terms(self._state_vector)
+    return self._problem.build_gauss_newton_terms(self._state_vector, self._parameters["use_sparse_matrix"])
 
   def solve_gauss_newton(self, A: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Returns the perturbation."""
-    return spla.cho_solve(spla.cho_factor(A), b)
+    if self._parameters["use_sparse_matrix"]:
+      return spla_sparse.spsolve(A, b)[..., None]  # expand to (state_size, 1)
+    else:
+      return spla.cho_solve(spla.cho_factor(A), b)
 
-  def query_covariance(self):
+  def query_covariance(self, toarray=True):
     assert self._approx_hessian is not None
     # Hessian == inverse covariance
-    return npla.inv(self._approx_hessian)
+    if self._parameters["use_sparse_matrix"]:
+      if toarray:
+        return npla.inv(self._approx_hessian.toarray())
+      else:
+        return spla.inv(self._approx_hessian)
+    else:
+      return npla.inv(self._approx_hessian)

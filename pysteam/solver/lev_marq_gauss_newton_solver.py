@@ -11,7 +11,12 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
   def __init__(self, problem: OptimizationProblem, **parameters) -> None:
     super().__init__(problem, **parameters)
     # override parameters
-    self._parameters.update({"ratio_threshold": 0.25, "shrink_coeff": 0.1, "grow_coeff": 10.0, "max_shrink_steps": 50})
+    self._parameters.update({
+        "ratio_threshold": 0.25,
+        "shrink_coeff": 0.1,
+        "grow_coeff": 10.0,
+        "max_shrink_steps": 50,
+    })
     self._parameters.update(**parameters)
 
     self._diag_coeff = 1e-7

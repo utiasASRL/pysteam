@@ -8,7 +8,11 @@ class VectorSpaceStateVar(StateVar):
 
   def __init__(self, value: np.ndarray, **kwargs) -> None:
     assert len(value.shape) == 2 and value.shape[-1] == 1
-    super().__init__(value, value.shape[-2], **kwargs)
+    super().__init__(value.shape[-2], **kwargs)
+    self._value = value
+
+  def clone(self):
+    raise NotImplementedError
 
   def get_value(self) -> np.ndarray:
     return self._value
@@ -18,6 +22,3 @@ class VectorSpaceStateVar(StateVar):
 
   def update(self, perturbation: np.ndarray) -> None:
     self._value += perturbation
-
-  def clone(self):
-    raise NotImplementedError
