@@ -32,14 +32,14 @@ class TrajectoryInterface:
                knot: TrajectoryVar = None,
                time: Time = None,
                T_k0: TransformEvaluator = None,
-               velocity: VectorSpaceStateVar = None) -> None:
+               w_0k_ink: VectorSpaceStateVar = None) -> None:
     if knot is not None:
       assert not knot.time.nanosecs in self._knots, "Knot already exists."
       self._knots[knot.time.nanosecs] = knot
       self._ordered_nsecs_valid = False
-    elif time is not None and T_k0 is not None and velocity is not None:
+    elif time is not None and T_k0 is not None and w_0k_ink is not None:
       assert not time.nanosecs in self._knots, "Knot already exists."
-      self._knots[time.nanosecs] = TrajectoryVar(time, T_k0, velocity)
+      self._knots[time.nanosecs] = TrajectoryVar(time, T_k0, w_0k_ink)
       self._ordered_nsecs_valid = False
     else:
       raise ValueError("Invalid input combination.")
@@ -63,7 +63,7 @@ class TrajectoryInterface:
     # create cost term
     self._pose_prior_factor = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
 
-  def add_velocity_prior(self, time: Time, velocity: np.ndarray, cov: np.ndarray) -> None:
+  def add_velocity_prior(self, time: Time, w_0k_ink: np.ndarray, cov: np.ndarray) -> None:
     """Add a unary velocity prior factor at a knot time.
     Note that only a single velocity prior should exist on a trajectory, adding a second will overwrite the first.
     """
@@ -77,7 +77,7 @@ class TrajectoryInterface:
     # set up loss function, noise model, and error function
     loss_func = L2LossFunc()
     noise_model = StaticNoiseModel(cov, "covariance")
-    error_func = VectorSpaceErrorEval(velocity, knot.velocity)
+    error_func = VectorSpaceErrorEval(w_0k_ink, knot.velocity)
 
     # create cost term
     self._velocity_prior_factor = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)

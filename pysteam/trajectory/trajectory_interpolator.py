@@ -29,9 +29,9 @@ class TrajectoryInterpolator:
     """
     for state in states:
       time = Time(secs=state[0])
-      pose = TransformStateEvaluator(TransformStateVar(Transformation(T_ba=state[1])))
-      velocity = VectorSpaceStateVar(state[2])
-      self._trajectory.add_knot(time=time, T_k0=pose, velocity=velocity)
+      T_k0 = TransformStateEvaluator(TransformStateVar(Transformation(T_ba=state[1])))
+      w_0k_ink = VectorSpaceStateVar(state[2])
+      self._trajectory.add_knot(time=time, T_k0=T_k0, w_0k_ink=w_0k_ink)
 
   def get_states(self, *times: List[float]):
     """Gets interpolated states at specified time stamps.
@@ -43,7 +43,7 @@ class TrajectoryInterpolator:
     states = []
     for time in times:
       traj_time = Time(secs=time)
-      pose = self._trajectory.get_interp_pose_eval(traj_time).evaluate().matrix()
-      velocity = self._trajectory.get_interp_velocity(traj_time)
-      states.append([time, pose, velocity])
+      T_k0 = self._trajectory.get_interp_pose_eval(traj_time).evaluate().matrix()
+      w_0k_ink = self._trajectory.get_interp_velocity(traj_time)
+      states.append([time, T_k0, w_0k_ink])
     return states[0] if len(times) == 1 else states

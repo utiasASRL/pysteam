@@ -26,11 +26,11 @@ class Time:
 
 class TrajectoryVar:
 
-  def __init__(self, time: Time, T_k0: TransformEvaluator, velocity: VectorSpaceStateVar) -> None:
+  def __init__(self, time: Time, T_k0: TransformEvaluator, w_0k_ink: VectorSpaceStateVar) -> None:
     self._time: Time = time
     self._T_k0: TransformEvaluator = T_k0
-    self._velocity: VectorSpaceStateVar = velocity
-    assert self._velocity.get_perturb_dim() == 6, "Invalid velocity size."
+    self._w_0k_ink: VectorSpaceStateVar = w_0k_ink
+    assert self._w_0k_ink.get_perturb_dim() == 6, "Invalid velocity size."
 
   @property
   def time(self) -> Time:
@@ -42,4 +42,4 @@ class TrajectoryVar:
 
   @property
   def velocity(self) -> VectorSpaceStateVar:
-    return self._velocity
+    return self._w_0k_ink
