@@ -5,9 +5,9 @@ from typing import Dict, List
 
 from pylgmath import Transformation, se3op
 from ..state import VectorSpaceStateVar
-from ..evaluator import TransformEvaluator, TransformErrorEval, VectorSpaceErrorEval
+from ..evaluator import TransformEvaluator, TransformErrorEval, VectorSpaceErrorEval, ComposeTransformEvaluator
 from ..problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
-from . import Time, TrajectoryVar, TrajectoryPriorFactor, TrajectoryInterpPoseEval
+from . import Time, TrajectoryVar, TrajectoryPriorFactor, TrajectoryInterpPoseEval, ConstVelTransformEvaluator
 
 
 class TrajectoryInterface:
@@ -15,7 +15,7 @@ class TrajectoryInterface:
   interpolation.
   """
 
-  def __init__(self, Qc_inv: np.ndarray = np.eye(6), allow_extrapolation: bool = False) -> None:
+  def __init__(self, Qc_inv: np.ndarray = np.eye(6), allow_extrapolation: bool = True) -> None:
     self._Qc_inv: np.ndarray = Qc_inv
     self._allow_extrapolation: bool = allow_extrapolation
 
@@ -136,12 +136,26 @@ class TrajectoryInterface:
       self._ordered_nsecs_valid = True
 
     idx = np.searchsorted(self._ordered_nsecs, time.nanosecs)
-    if self._ordered_nsecs[idx] == time.nanosecs:
+
+    # request time exactly on a knot
+    if idx < len(self._ordered_nsecs) and self._ordered_nsecs[idx] == time.nanosecs:
       return self._knots[self._ordered_nsecs[idx]].pose
 
     if idx == 0 or idx == len(self._ordered_nsecs):
-      raise NotImplementedError("Extrapolation not implemented yet")
+      if not self._allow_extrapolation:
+        raise ValueError("Query time out-of-range with extrapolation disallowed.")
+      # request time before the first knot
+      elif idx == 0:
+        start_knot = self._knots[self._ordered_nsecs[0]]
+        T_t_k_eval = ConstVelTransformEvaluator(start_knot.velocity, time - start_knot.time)
+        return ComposeTransformEvaluator(T_t_k_eval, start_knot.pose)
+      # request time after the last knot
+      else:
+        end_knot = self._knots[self._ordered_nsecs[-1]]
+        T_t_k_eval = ConstVelTransformEvaluator(end_knot.velocity, time - end_knot.time)
+        return ComposeTransformEvaluator(T_t_k_eval, end_knot.pose)
 
+    # request time between two knots, needs interpolation
     return TrajectoryInterpPoseEval(time, self._knots[self._ordered_nsecs[idx - 1]],
                                     self._knots[self._ordered_nsecs[idx]])
 
@@ -154,13 +168,22 @@ class TrajectoryInterface:
       self._ordered_nsecs_valid = True
 
     idx = np.searchsorted(self._ordered_nsecs, time.nanosecs)
-    if self._ordered_nsecs[idx] == time.nanosecs:
+
+    # request time exactly on a knot
+    if idx < len(self._ordered_nsecs) and self._ordered_nsecs[idx] == time.nanosecs:
       return self._knots[self._ordered_nsecs[idx]].velocity.get_value()
 
     if idx == 0 or idx == len(self._ordered_nsecs):
-      raise NotImplementedError("Extrapolation not implemented yet")
+      if not self._allow_extrapolation:
+        raise ValueError("Query time out-of-range with extrapolation disallowed.")
+      # request time before first knot
+      elif idx == 0:
+        return self._knots[self._ordered_nsecs[0]].velocity.get_value()
+      # request time after last knot
+      else:
+        return self._knots[self._ordered_nsecs[-1]].velocity.get_value()
 
-    # interpolate
+    # request time needs interpolation
     knot1 = self._knots[self._ordered_nsecs[idx - 1]]
     knot2 = self._knots[self._ordered_nsecs[idx]]
 
