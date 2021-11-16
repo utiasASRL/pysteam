@@ -14,10 +14,11 @@ class TransformStateVar(StateVar):
   def clone(self):
     raise NotImplementedError
 
-  def get_value(self) -> Transformation:
+  @property
+  def value(self) -> Transformation:
     return self._value
 
-  def set_value(self, value: Transformation) -> None:
+  def assign(self, value: Transformation) -> None:
     self._value.assign(T_ba=value.matrix())
 
   def update(self, perturbation: np.ndarray) -> None:

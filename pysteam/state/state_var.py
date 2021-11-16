@@ -26,22 +26,23 @@ class StateVar(abc.ABC):
   of the variable.
   """
 
-  def __init__(self, perturb_dim: int, *, is_locked: bool = False):
+  def __init__(self, perturb_dim: int, *, locked: bool = False):
     assert perturb_dim > 0, "Zero or negative perturbation dimension."
     self._perturb_dim: int = perturb_dim
-    self._is_locked: bool = is_locked
+    self._locked: bool = locked
     self._key: StateKey = StateKey()
 
   @abc.abstractmethod
   def clone(other: StateVar):
     """Creats a copy of this state variable including its current value"""
 
+  @property
   @abc.abstractmethod
-  def get_value(self):
+  def value(self):
     """Returns a reference to the internal value"""
 
   @abc.abstractmethod
-  def set_value(self, value):
+  def assign(self, value):
     """Sets internal value from another internal value"""
 
   @abc.abstractmethod
@@ -49,17 +50,21 @@ class StateVar(abc.ABC):
     """Update value given a perturbation"""
 
   def set_from_copy(self, other: StateVar) -> None:
-    assert self.get_key() == other.get_key()
-    self.set_value(other.get_value())
+    assert self.key == other.key
+    self.assign(other.value)
 
-  def get_key(self) -> StateKey:
+  @property
+  def key(self) -> StateKey:
     return self._key
 
-  def get_perturb_dim(self) -> int:
+  @property
+  def perturb_dim(self) -> int:
     return self._perturb_dim
 
-  def is_locked(self) -> bool:
-    return self._is_locked
+  @property
+  def locked(self) -> bool:
+    return self._locked
 
-  def set_lock(self, lock_state: bool) -> None:
-    self._is_locked = lock_state
+  @locked.setter
+  def locked(self, v: bool):
+    self._locked = v

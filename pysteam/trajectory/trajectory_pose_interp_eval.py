@@ -34,8 +34,8 @@ class TrajectoryInterpPoseEval(TransformEvaluator):
     self._lambda22 = 1.0 - T * self._psi21 - self._psi22
 
   def is_active(self) -> bool:
-    return ((self._knot1.pose.is_active() or not self._knot1.velocity.is_locked()) or
-            (self._knot2.pose.is_active() or not self._knot2.velocity.is_locked()))
+    return ((self._knot1.pose.is_active() or not self._knot1.velocity.locked) or
+            (self._knot2.pose.is_active() or not self._knot2.velocity.locked))
 
   def get_eval_tree(self):
     # evaluate sub-trees
@@ -52,8 +52,8 @@ class TrajectoryInterpPoseEval(TransformEvaluator):
     J_21_inv = se3op.vec2jacinv(xi_21)
 
     # calculate interpolated relative se3 algebra
-    xi_i1 = (self._lambda12 * self._knot1.velocity.get_value() + self._psi11 * xi_21 +
-             self._psi12 * J_21_inv @ self._knot2.velocity.get_value())
+    xi_i1 = (self._lambda12 * self._knot1.velocity.value + self._psi11 * xi_21 +
+             self._psi12 * J_21_inv @ self._knot2.velocity.value)
 
     # calculate interpolated relative transformation matrix
     T_i1 = Transformation(xi_ab=xi_i1)
@@ -83,8 +83,8 @@ class TrajectoryInterpPoseEval(TransformEvaluator):
     J_21_inv = se3op.vec2jacinv(xi_21)
 
     # calculate interpolated relative se3 algebra
-    xi_i1 = (self._lambda12 * self._knot1.velocity.get_value() + self._psi11 * xi_21 +
-             self._psi12 * J_21_inv @ self._knot2.velocity.get_value())
+    xi_i1 = (self._lambda12 * self._knot1.velocity.value + self._psi11 * xi_21 +
+             self._psi12 * J_21_inv @ self._knot2.velocity.value)
 
     # calculate interpolated relative transformation matrix
     T_i1 = Transformation(xi_ab=xi_i1)
@@ -94,7 +94,7 @@ class TrajectoryInterpPoseEval(TransformEvaluator):
 
     if self._knot1.pose.is_active() or self._knot2.pose.is_active():
       w = (self._psi11 * J_i1 @ J_21_inv +
-           0.5 * self._psi12 * J_i1 @ se3op.curlyhat(self._knot2.velocity.get_value()) @ J_21_inv)
+           0.5 * self._psi12 * J_i1 @ se3op.curlyhat(self._knot2.velocity.value) @ J_21_inv)
 
       if self._knot1.pose.is_active():
         jacobian = (-1) * w @ T_21.adjoint() + T_i1.adjoint()
@@ -106,14 +106,14 @@ class TrajectoryInterpPoseEval(TransformEvaluator):
         jacs = AutoGradEvaluator.merge_jacs(jacs, jacs2)
 
     # 6 x 6 Velocity Jacobian 1
-    if not self._knot1.velocity.is_locked():
-      jacs3 = {self._knot1.velocity.get_key(): self._lambda12 * lhs @ J_i1}
+    if not self._knot1.velocity.locked:
+      jacs3 = {self._knot1.velocity.key: self._lambda12 * lhs @ J_i1}
       jacs = AutoGradEvaluator.merge_jacs(jacs, jacs3)
 
     # 6 x 6 Velocity Jacobian 2
-    if not self._knot2.velocity.is_locked():
+    if not self._knot2.velocity.locked:
       jacobian = self._psi12 * J_i1 @ J_21_inv
-      jacs4 = {self._knot2.velocity.get_key(): lhs @ jacobian}
+      jacs4 = {self._knot2.velocity.key: lhs @ jacobian}
       jacs = AutoGradEvaluator.merge_jacs(jacs, jacs4)
 
     return jacs

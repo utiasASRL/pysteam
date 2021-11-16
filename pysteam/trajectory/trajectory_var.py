@@ -30,7 +30,7 @@ class TrajectoryVar:
     self._time: Time = time
     self._T_k0: TransformEvaluator = T_k0
     self._w_0k_ink: VectorSpaceStateVar = w_0k_ink
-    assert self._w_0k_ink.get_perturb_dim() == 6, "Invalid velocity size."
+    assert self._w_0k_ink.perturb_dim == 6, "Invalid velocity size."
 
   @property
   def time(self) -> Time:

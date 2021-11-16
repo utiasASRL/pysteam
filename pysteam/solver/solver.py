@@ -25,7 +25,7 @@ class Solver(abc.ABC):
 
     # set up state vector -- add all states that are not locked to vector
     for state_var in self._problem.get_state_vars():
-      if not state_var.is_locked():
+      if not state_var.locked:
         self._state_vector.add_state_var(state_var)
 
     # create a backup state vector

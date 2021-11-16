@@ -16,19 +16,19 @@ class ConstVelTransformEvaluator(TransformEvaluator):
     self._time: Time = time
 
   def is_active(self):
-    return not self._velocity.is_locked()
+    return not self._velocity.locked
 
   def get_eval_tree(self):
-    xi = self._time.seconds * self._velocity.get_value()
+    xi = self._time.seconds * self._velocity.value
     T_tk = Transformation(xi_ab=xi)
     return EvalTreeNode(T_tk)
 
   def compute_jacs(self, lhs, tree):
     jacs = dict()
 
-    if not self._velocity.is_locked():
-      xi = self._time.seconds * self._velocity.get_value()
+    if not self._velocity.locked:
+      xi = self._time.seconds * self._velocity.value
       jac = self._time.seconds * se3op.vec2jac(xi)
-      jacs = {self._velocity.get_key(): lhs @ jac}
+      jacs = {self._velocity.key: lhs @ jac}
 
     return jacs

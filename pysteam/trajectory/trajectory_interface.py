@@ -72,7 +72,7 @@ class TrajectoryInterface:
 
     # get knot at specified time
     knot = self._knots[time.nanosecs]
-    assert not knot.velocity.is_locked(), "Adding prior to locked velocity."
+    assert not knot.velocity.locked, "Adding prior to locked velocity."
 
     # set up loss function, noise model, and error function
     loss_func = L2LossFunc()
@@ -106,8 +106,8 @@ class TrajectoryInterface:
       knot1 = self._knots[self._ordered_nsecs[t - 1]]
       knot2 = self._knots[self._ordered_nsecs[t]]
 
-      if (knot1.pose.is_active() or not knot1.velocity.is_locked() or knot2.pose.is_active() or
-          not knot2.velocity.is_locked()):
+      if (knot1.pose.is_active() or not knot1.velocity.locked or knot2.pose.is_active() or
+          not knot2.velocity.locked):
 
         # generate 12 x 12 information matrix for GP prior factor
         Qi_inv = np.zeros((12, 12))
@@ -171,17 +171,17 @@ class TrajectoryInterface:
 
     # request time exactly on a knot
     if idx < len(self._ordered_nsecs) and self._ordered_nsecs[idx] == time.nanosecs:
-      return self._knots[self._ordered_nsecs[idx]].velocity.get_value()
+      return self._knots[self._ordered_nsecs[idx]].velocity.value
 
     if idx == 0 or idx == len(self._ordered_nsecs):
       if not self._allow_extrapolation:
         raise ValueError("Query time out-of-range with extrapolation disallowed.")
       # request time before first knot
       elif idx == 0:
-        return self._knots[self._ordered_nsecs[0]].velocity.get_value()
+        return self._knots[self._ordered_nsecs[0]].velocity.value
       # request time after last knot
       else:
-        return self._knots[self._ordered_nsecs[-1]].velocity.get_value()
+        return self._knots[self._ordered_nsecs[-1]].velocity.value
 
     # request time needs interpolation
     knot1 = self._knots[self._ordered_nsecs[idx - 1]]
@@ -214,13 +214,12 @@ class TrajectoryInterface:
     J_21_inv = se3op.vec2jacinv(xi_21)
 
     # calculate interpolated relative se3 algebra
-    xi_i1 = lambda12 * knot1.velocity.get_value() + psi11 * xi_21 + psi12 * J_21_inv @ knot2.velocity.get_value()
+    xi_i1 = lambda12 * knot1.velocity.value + psi11 * xi_21 + psi12 * J_21_inv @ knot2.velocity.value
 
     # calculate the 6x6 associated Jacobian
     J_t1 = se3op.vec2jac(xi_i1)
 
     # calculate interpolated relative se3 algebra
-    xi_it = J_t1 @ (lambda22 * knot1.velocity.get_value() + psi21 * xi_21 +
-                    psi22 * J_21_inv @ knot2.velocity.get_value())
+    xi_it = J_t1 @ (lambda22 * knot1.velocity.value + psi21 * xi_21 + psi22 * J_21_inv @ knot2.velocity.value)
 
     return xi_it

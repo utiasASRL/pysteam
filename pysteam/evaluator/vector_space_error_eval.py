@@ -14,19 +14,19 @@ class VectorSpaceErrorEval(Evaluator):
     self._state_vec: VectorSpaceStateVar = state_vec
 
   def is_active(self):
-    return not self._state_vec.is_locked()
+    return not self._state_vec.locked
 
   def evaluate(self, lhs: Optional[np.ndarray] = None):
-    error = self._meas - self._state_vec.get_value()
+    error = self._meas - self._state_vec.value
 
     if lhs is None:
       return error
 
-    assert lhs.shape[-1] == self._state_vec.get_perturb_dim()
+    assert lhs.shape[-1] == self._state_vec.perturb_dim
 
     jacs = dict()
 
-    if not self._state_vec.is_locked():
-      jacs = {self._state_vec.get_key(): -lhs}
+    if not self._state_vec.locked:
+      jacs = {self._state_vec.key: -lhs}
 
     return error, jacs

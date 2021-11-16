@@ -14,10 +14,11 @@ class VectorSpaceStateVar(StateVar):
   def clone(self):
     raise NotImplementedError
 
-  def get_value(self) -> np.ndarray:
+  @property
+  def value(self) -> np.ndarray:
     return self._value
 
-  def set_value(self, value: np.ndarray) -> None:
+  def assign(self, value: np.ndarray) -> None:
     self._value[:] = value
 
   def update(self, perturbation: np.ndarray) -> None:

@@ -85,16 +85,16 @@ class TransformStateEvaluator(TransformEvaluator):
     self._transform: TransformStateVar = transform
 
   def is_active(self):
-    return not self._transform.is_locked()
+    return not self._transform.locked
 
   def get_eval_tree(self):
-    return EvalTreeNode(self._transform.get_value())
+    return EvalTreeNode(self._transform.value)
 
   def compute_jacs(self, lhs, tree):
     jacs = dict()
 
-    if not self._transform.is_locked():
-      jacs = {self._transform.get_key(): lhs}
+    if not self._transform.locked:
+      jacs = {self._transform.key: lhs}
 
     return jacs
 
@@ -175,12 +175,12 @@ class ComposeLandmarkEvaluator(TransformEvaluator):
     self._landmark: LandmarkStateVar = landmark
 
   def is_active(self):
-    return self._transform.is_active() or not self._landmark.is_locked()
+    return self._transform.is_active() or not self._landmark.locked
 
   def get_eval_tree(self):
 
     transform_child = self._transform.get_eval_tree()
-    landmark_leaf = EvalTreeNode(self._landmark.get_value())
+    landmark_leaf = EvalTreeNode(self._landmark.value)
 
     value = transform_child.value.matrix() @ landmark_leaf.value
     root = EvalTreeNode(value, transform_child, landmark_leaf)
@@ -194,9 +194,9 @@ class ComposeLandmarkEvaluator(TransformEvaluator):
       new_lhs = lhs @ se3op.point2fs(homogeneous)
       jacs = self._transform.compute_jacs(new_lhs, tree.children[0])
 
-    if not self._landmark.is_locked():
+    if not self._landmark.locked:
       land_jac = np.zeros((4, 6))
       land_jac = tree.children[0].value.matrix()[:4, :3]
-      jacs = self.merge_jacs(jacs, {self._landmark.get_key(), lhs @ land_jac})
+      jacs = self.merge_jacs(jacs, {self._landmark.key, lhs @ land_jac})
 
     return jacs

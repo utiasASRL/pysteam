@@ -26,15 +26,15 @@ class StateVector:
 
   def add_state_var(self, state_var: StateVar) -> None:
     """Add state variable."""
-    if state_var.is_locked():
+    if state_var.locked:
       raise RuntimeError("Cannot add locked state variable to an optimizable state vector.")
 
-    key = state_var.get_key()
+    key = state_var.key
     if self.has_state_var(key):
       raise RuntimeError("StateVector already contains the state being added.")
 
-    self._state_size += state_var.get_perturb_dim()
-    self._state_indices.append(self._state_indices[-1] + state_var.get_perturb_dim())
+    self._state_size += state_var.perturb_dim
+    self._state_indices.append(self._state_indices[-1] + state_var.perturb_dim)
     indices = slice(self._state_indices[-2], self._state_indices[-1])
     self._state_vars[key] = StateContainer(state_var, indices)
 
