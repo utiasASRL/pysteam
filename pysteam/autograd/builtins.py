@@ -1,8 +1,7 @@
-import itertools
 from future.utils import with_metaclass
+import numpy as np
 from .util import subvals
-from .extend import (Box, primitive, notrace_primitive, VSpace, vspace,
-                     SparseObject, defvjp, defvjp_argnum, defjvp, defjvp_argnum)
+from .extend import Box, primitive, notrace_primitive, VSpace, vspace, SparseObject, defvjp, defvjp_argnum
 
 isinstance_ = isinstance
 isinstance = notrace_primitive(isinstance)
@@ -18,7 +17,6 @@ def container_take(A, idx):
 def grad_container_take(ans, A, idx):
     return lambda g: container_untake(g, idx, vspace(A))
 defvjp(container_take, grad_container_take)
-defjvp(container_take, 'same')
 
 class SequenceBox(Box):
     __slots__ = []
@@ -58,7 +56,6 @@ def container_untake(x, idx, vs):
     return SparseObject(vs, mut_add)
 defvjp(container_untake, lambda ans, x, idx, _:
        lambda g: container_take(g, idx))
-defjvp(container_untake, 'same')
 
 @primitive
 def sequence_extend_right(seq, *elts):
@@ -80,11 +77,6 @@ defvjp_argnum(sequence_extend_left, grad_sequence_extend_left)
 def make_sequence(seq_type, *args):
     return seq_type(args)
 defvjp_argnum(make_sequence, lambda argnum, *args: lambda g: g[argnum - 1])
-
-def fwd_grad_make_sequence(argnum, g, ans, seq_type, *args, **kwargs):
-    return container_untake(g, argnum-1, vspace(ans))
-
-defjvp_argnum(make_sequence, fwd_grad_make_sequence)
 
 
 class TupleMeta(type_):
@@ -167,3 +159,65 @@ class DictVSpace(ContainerVSpace):
 ListVSpace.register(list_)
 TupleVSpace.register(tuple_)
 DictVSpace.register(dict_)
+
+
+# basic numpy functions for jacobian & hessian computation
+
+@notrace_primitive
+def ndim(x):
+    return np.ndim(x)
+
+@notrace_primitive
+def shape(x):
+    return np.shape(x)
+
+@primitive
+def reshape(x, *args, **kwargs):
+    # The reshape method can be called like A.reshape((5,4)) or A.reshape(5,4).
+    # The reshape function doesn't support both ways, so we have to wrap it.
+    if isinstance(args[0], int):
+        return np.reshape(x, args, **kwargs)
+    else:
+        return np.reshape(x, *args, **kwargs)
+defvjp(reshape, lambda ans, x, _, order=None : lambda g: reshape(g, shape(x), order=order))
+
+@primitive
+def concatenate_args(axis, *args):
+    return np.concatenate(args, axis).view(np.ndarray)
+concatenate = lambda arr_list, axis=0 : concatenate_args(axis, *arr_list)
+
+def grad_concatenate_args(argnum, ans, axis_args, kwargs):
+    axis, args = axis_args[0], axis_args[1:]
+    sizes = [shape(a)[axis] for a in args[:argnum]]
+    start = sum(sizes[:-1])
+    idxs = [slice(None)] * ndim(ans)
+    idxs[axis] = slice(start, start + sizes[-1])
+    return lambda g: g[tuple(idxs)]
+defvjp_argnum(concatenate_args, grad_concatenate_args)
+
+
+def stack(arrays, axis=0):
+    # this code is basically copied from numpy/core/shape_base.py's stack
+    # we need it here because we want to re-implement stack in terms of the
+    # primitives defined in this file
+    # arrays = [array(arr) for arr in arrays]  # original version: can convert non-array to array
+    arrays = [arr for arr in arrays]
+    if not all(isinstance(arr, np.ndarray) for arr in arrays):
+        for arr in arrays:
+            print(isinstance(arr, np.ndarray), arr)
+        raise TypeError("`stack` only supports np arrays")
+    if not arrays:
+        raise ValueError('need at least one array to stack')
+
+    shapes = set(shape(arr) for arr in arrays)
+    if len(shapes) != 1:
+        raise ValueError('all input arrays must have the same shape')
+
+    result_ndim = ndim(arrays[0]) + 1
+    if not -result_ndim <= axis < result_ndim:
+        raise IndexError('axis {0} out of bounds [-{1}, {1})'.format(axis, result_ndim))
+    if axis < 0:
+        axis += result_ndim
+
+    sl = (slice(None),) * axis + (None,)
+    return concatenate([arr[sl] for arr in arrays], axis=axis)
