@@ -4,9 +4,9 @@ import numpy as np
 from typing import Dict, List
 
 from pylgmath import Transformation, se3op
-from ..evaluatable import Evaluatable
-from ..evaluatable.se3 import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
-from ..evaluatable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvaluator
+from ..evaluable import Evaluable
+from ..evaluable.se3 import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
+from ..evaluable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvaluator
 from ..problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
 from .trajectory_var import Time, TrajectoryVar
 from .trajectory_prior_factor import TrajectoryPriorFactor
@@ -36,8 +36,8 @@ class TrajectoryInterface:
                *,
                knot: TrajectoryVar = None,
                time: Time = None,
-               T_k0: Evaluatable = None,
-               w_0k_ink: Evaluatable = None) -> None:
+               T_k0: Evaluable = None,
+               w_0k_ink: Evaluable = None) -> None:
     if knot is not None:
       assert not knot.time.nanosecs in self._knots, "Knot already exists."
       self._knots[knot.time.nanosecs] = knot

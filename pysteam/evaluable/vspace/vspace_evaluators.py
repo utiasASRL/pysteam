@@ -2,15 +2,15 @@ from typing import Dict
 import numpy as np
 
 from ..state_key import StateKey
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 
 
-class NegationEvaluator(Evaluatable):
+class NegationEvaluator(Evaluable):
   """Evaluator for the negation of a vector."""
 
-  def __init__(self, value: Evaluatable) -> None:
+  def __init__(self, value: Evaluable) -> None:
     super().__init__()
-    self._value: Evaluatable = value
+    self._value: Evaluable = value
 
   @property
   def active(self) -> bool:
@@ -30,13 +30,13 @@ class NegationEvaluator(Evaluatable):
 
 neg = NegationEvaluator
 
-class AdditionEvaluator(Evaluatable):
+class AdditionEvaluator(Evaluable):
   """Evaluator for the addition of two vectors."""
 
-  def __init__(self, lhs: Evaluatable, rhs: Evaluatable) -> None:
+  def __init__(self, lhs: Evaluable, rhs: Evaluable) -> None:
     super().__init__()
-    self._lhs: Evaluatable = lhs
-    self._rhs: Evaluatable = rhs
+    self._lhs: Evaluable = lhs
+    self._rhs: Evaluable = rhs
 
   @property
   def active(self) -> bool:
@@ -62,11 +62,11 @@ class AdditionEvaluator(Evaluatable):
 
 add = AdditionEvaluator
 
-class ScalarMultEvaluator(Evaluatable):
+class ScalarMultEvaluator(Evaluable):
 
-  def __init__(self, value: Evaluatable, scalar: float) -> None:
+  def __init__(self, value: Evaluable, scalar: float) -> None:
     super().__init__()
-    self._value: Evaluatable = value
+    self._value: Evaluable = value
     self._scalar: float = scalar
 
   @property

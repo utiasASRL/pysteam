@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import numpy as np
 import numpy.linalg as npla
 
-from ..evaluatable import Evaluatable, StateKey
+from ..evaluable import Evaluable, StateKey
 from .loss_func import LossFunc
 from .noise_model import NoiseModel
 from .state_vector import StateVector
@@ -29,9 +29,9 @@ class CostTerm(abc.ABC):
 
 class WeightedLeastSquareCostTerm(CostTerm):
 
-  def __init__(self, error_func: Evaluatable, noise_model: NoiseModel, loss_func: LossFunc):
+  def __init__(self, error_func: Evaluable, noise_model: NoiseModel, loss_func: LossFunc):
     super().__init__()
-    self._error_func: Evaluatable = error_func
+    self._error_func: Evaluable = error_func
     self._noise_model: NoiseModel = noise_model
     self._loss_func: LossFunc = loss_func
 

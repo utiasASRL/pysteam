@@ -14,7 +14,7 @@ class Node:
     self.children = list(children)
 
 
-class Evaluatable(abc.ABC):
+class Evaluable(abc.ABC):
   """Base class that defines the general 'evaluator' interface."""
 
   @property

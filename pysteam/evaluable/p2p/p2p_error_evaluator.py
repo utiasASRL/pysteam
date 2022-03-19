@@ -4,21 +4,21 @@ import numpy as np
 from pylgmath import se3op
 
 from ..state_key import StateKey
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 
 
-class P2PErrorEvaluator(Evaluatable):
+class P2PErrorEvaluator(Evaluable):
   """The distance between two points living in their respective frame."""
 
   def __init__(
       self,
-      T_rq: Evaluatable,
+      T_rq: Evaluable,
       reference: np.ndarray,
       query: np.ndarray,
   ) -> None:
     super().__init__()
 
-    self._T_rq: Evaluatable = T_rq
+    self._T_rq: Evaluable = T_rq
     self._reference: np.ndarray = reference / reference[3]
     self._query: np.ndarray = query / query[3]
 

@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as npla
 
 from ..state_var import StateVar
-from ..evaluatable import Node
+from ..evaluable import Node
 
 
 class HomoPointStateVar(StateVar):

@@ -2,7 +2,7 @@ from typing import Optional
 import numpy as np
 
 from ..state_key import StateKey
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 
 
 class CameraIntrinsics:
@@ -46,15 +46,15 @@ def camera_model_jac(ints: CameraIntrinsics, p: np.ndarray) -> np.ndarray:
   return dgdp
 
 
-class StereoErrorEvaluator(Evaluatable):
+class StereoErrorEvaluator(Evaluable):
   """Stereo camera error function evaluator."""
 
-  def __init__(self, meas: np.ndarray, intrinsics: CameraIntrinsics, landmark: Evaluatable):
+  def __init__(self, meas: np.ndarray, intrinsics: CameraIntrinsics, landmark: Evaluable):
     super().__init__()
 
     self._meas: np.ndarray = meas
     self._intrinsics: CameraIntrinsics = intrinsics
-    self._landmark: Evaluatable = landmark
+    self._landmark: Evaluable = landmark
 
   @property
   def active(self) -> bool:

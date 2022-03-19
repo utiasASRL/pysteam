@@ -4,16 +4,16 @@ import numpy as np
 from pylgmath import se3op
 
 from ..state_key import StateKey
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 
 
-class ComposeLandmarkEvaluator(Evaluatable):
+class ComposeLandmarkEvaluator(Evaluable):
   """Evaluator for the composition of a transformation evaluator and landmark state."""
 
-  def __init__(self, transform: Evaluatable, landmark: Evaluatable):
+  def __init__(self, transform: Evaluable, landmark: Evaluable):
     super().__init__()
-    self._transform: Evaluatable = transform
-    self._landmark: Evaluatable = landmark
+    self._transform: Evaluable = transform
+    self._landmark: Evaluable = landmark
 
   @property
   def active(self) -> bool:

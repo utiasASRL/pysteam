@@ -4,13 +4,13 @@ import numpy as np
 from pylgmath import se3op, Transformation
 
 from ..state_key import StateKey
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 
 
-class ExpMapEvaluator(Evaluatable):
+class ExpMapEvaluator(Evaluable):
   """Evaluator of ExpMap."""
 
-  def __init__(self, value: Evaluatable) -> None:
+  def __init__(self, value: Evaluable) -> None:
     super().__init__()
     self._value = value
 
@@ -34,12 +34,12 @@ class ExpMapEvaluator(Evaluatable):
 vec2tran = ExpMapEvaluator
 
 
-class LogMapEvaluator(Evaluatable):
+class LogMapEvaluator(Evaluable):
   """Evaluator for the logarithmic map of a transformation matrix."""
 
-  def __init__(self, transform: Evaluatable) -> None:
+  def __init__(self, transform: Evaluable) -> None:
     super().__init__()
-    self._transform: Evaluatable = transform
+    self._transform: Evaluable = transform
 
   @property
   def active(self) -> bool:
@@ -61,12 +61,12 @@ class LogMapEvaluator(Evaluatable):
 tran2vec = LogMapEvaluator
 
 
-class InverseEvaluator(Evaluatable):
+class InverseEvaluator(Evaluable):
   """Evaluator for the inverse of a transformation matrix"""
 
-  def __init__(self, transform: Evaluatable) -> None:
+  def __init__(self, transform: Evaluable) -> None:
     super().__init__()
-    self._transform: Evaluatable = transform
+    self._transform: Evaluable = transform
 
   @property
   def active(self) -> bool:
@@ -88,13 +88,13 @@ class InverseEvaluator(Evaluatable):
 inv = InverseEvaluator
 
 
-class ComposeEvaluator(Evaluatable):
+class ComposeEvaluator(Evaluable):
   """Evaluator for the composition of transformation matrices."""
 
-  def __init__(self, transform1: Evaluatable, transform2: Evaluatable):
+  def __init__(self, transform1: Evaluable, transform2: Evaluable):
     super().__init__()
-    self._transform1: Evaluatable = transform1
-    self._transform2: Evaluatable = transform2
+    self._transform1: Evaluable = transform1
+    self._transform2: Evaluable = transform2
 
   @property
   def active(self) -> bool:
@@ -124,7 +124,7 @@ class ComposeEvaluator(Evaluatable):
 compose = ComposeEvaluator
 
 
-class ComposeInverseEvaluator(Evaluatable):
+class ComposeInverseEvaluator(Evaluable):
   """Evaluator for the composition of two transformation matrices (with one inverted)."""
 
   def __init__(self, transform1, transform2):
@@ -161,10 +161,10 @@ class ComposeInverseEvaluator(Evaluatable):
 compose_rinv = ComposeInverseEvaluator
 
 
-class JacobianEvaluator(Evaluatable):
+class JacobianEvaluator(Evaluable):
   """Evaluator of Jacobian."""
 
-  def __init__(self, value: Evaluatable) -> None:
+  def __init__(self, value: Evaluable) -> None:
     super().__init__()
     self._value = value
 
@@ -189,10 +189,10 @@ class JacobianEvaluator(Evaluatable):
 vec2jac = JacobianEvaluator
 
 
-class JacobianInvEvaluator(Evaluatable):
+class JacobianInvEvaluator(Evaluable):
   """Evaluator of Jacobian Inv."""
 
-  def __init__(self, value: Evaluatable) -> None:
+  def __init__(self, value: Evaluable) -> None:
     super().__init__()
     self._value = value
 

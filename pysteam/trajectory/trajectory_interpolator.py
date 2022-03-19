@@ -3,8 +3,8 @@ from typing import List, Tuple
 
 from pylgmath import Transformation
 
-from ..evaluatable.se3 import SE3StateVar
-from ..evaluatable.vspace import VSpaceStateVar
+from ..evaluable.se3 import SE3StateVar
+from ..evaluable.vspace import VSpaceStateVar
 from . import Time, TrajectoryInterface
 
 

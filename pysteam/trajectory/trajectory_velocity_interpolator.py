@@ -1,10 +1,10 @@
-from ..evaluatable import Evaluatable, Node
-from ..evaluatable import se3 as se3ev, vspace as vspaceev
+from ..evaluable import Evaluable, Node
+from ..evaluable import se3 as se3ev, vspace as vspaceev
 from .trajectory_var import Time, TrajectoryVar
 from .evaluators import j_velocity, jinv_velocity
 
 
-class VelocityInterpolator(Evaluatable):
+class VelocityInterpolator(Evaluable):
 
   def __init__(self, time: Time, knot1: TrajectoryVar, knot2: TrajectoryVar) -> None:
     super().__init__()

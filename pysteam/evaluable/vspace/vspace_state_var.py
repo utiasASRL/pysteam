@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..state_var import StateVar
-from ..evaluatable import Node
+from ..evaluable import Node
 
 
 class VSpaceStateVar(StateVar):

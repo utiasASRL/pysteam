@@ -3,17 +3,17 @@ import numpy as np
 
 from pylgmath import se3op
 
-from ..evaluatable import StateKey
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import StateKey
+from ..evaluable import Evaluable, Node
 
 
-class JVelocityEvaluator(Evaluatable):
+class JVelocityEvaluator(Evaluable):
   """Evaluator for the composition of left Jacobian and velocity."""
 
-  def __init__(self, left_jac: Evaluatable, velocity: Evaluatable):
+  def __init__(self, left_jac: Evaluable, velocity: Evaluable):
     super().__init__()
-    self._left_jac: Evaluatable = left_jac
-    self._velocity: Evaluatable = velocity
+    self._left_jac: Evaluable = left_jac
+    self._velocity: Evaluable = velocity
 
   @property
   def active(self) -> bool:
@@ -45,13 +45,13 @@ class JVelocityEvaluator(Evaluatable):
 j_velocity = JVelocityEvaluator
 
 
-class JinvVelocityEvaluator(Evaluatable):
+class JinvVelocityEvaluator(Evaluable):
   """Evaluator for the composition of Jinv and Velocity."""
 
-  def __init__(self, jacinv: Evaluatable, velocity: Evaluatable):
+  def __init__(self, jacinv: Evaluable, velocity: Evaluable):
     super().__init__()
-    self._jacinv: Evaluatable = jacinv
-    self._velocity: Evaluatable = velocity
+    self._jacinv: Evaluable = jacinv
+    self._velocity: Evaluable = velocity
 
   @property
   def active(self) -> bool:

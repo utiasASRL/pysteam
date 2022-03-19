@@ -3,7 +3,7 @@ import numpy as np
 from pylgmath import se3op, Transformation
 
 from ..state_var import StateVar
-from ..evaluatable import Node
+from ..evaluable import Node
 
 
 class SE3StateVar(StateVar):

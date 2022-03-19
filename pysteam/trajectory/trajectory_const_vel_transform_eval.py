@@ -1,15 +1,15 @@
 from pylgmath import se3op, Transformation
 
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 from .trajectory_var import Time
 
 
-class ConstVelTransformEvaluator(Evaluatable):
+class ConstVelTransformEvaluator(Evaluable):
   """Simple transform evaluator for a constant velocity model."""
 
-  def __init__(self, velocity: Evaluatable, time: Time):
+  def __init__(self, velocity: Evaluable, time: Time):
     super().__init__()
-    self._velocity: Evaluatable = velocity
+    self._velocity: Evaluable = velocity
     self._time: Time = time
 
   @property

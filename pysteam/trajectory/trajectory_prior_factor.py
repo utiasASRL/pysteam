@@ -2,11 +2,11 @@ import numpy as np
 
 from pylgmath import se3op, Transformation
 
-from ..evaluatable import Evaluatable, Node
+from ..evaluable import Evaluable, Node
 from .trajectory_var import TrajectoryVar
 
 
-class TrajectoryPriorFactor(Evaluatable):
+class TrajectoryPriorFactor(Evaluable):
 
   def __init__(self, knot1: TrajectoryVar, knot2: TrajectoryVar) -> None:
     super().__init__()

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 import numpy as np
 
-from ..evaluatable import StateKey, StateVar
+from ..evaluable import StateKey, StateVar
 
 
 class StateContainer:

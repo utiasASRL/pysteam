@@ -1,7 +1,7 @@
 import numpy as np
 from pylgmath import se3op, Transformation
 from pysteam import problem, solver
-from pysteam.evaluatable import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
+from pysteam.evaluable import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
 
 np.set_printoptions(precision=2)
 

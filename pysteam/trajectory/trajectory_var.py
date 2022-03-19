@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..evaluatable import Evaluatable
+from ..evaluable import Evaluable
 
 
 class Time:
@@ -25,10 +25,10 @@ class Time:
 
 class TrajectoryVar:
 
-  def __init__(self, time: Time, T_k0: Evaluatable, w_0k_ink: Evaluatable) -> None:
+  def __init__(self, time: Time, T_k0: Evaluable, w_0k_ink: Evaluable) -> None:
     self._time: Time = time
-    self._T_k0: Evaluatable = T_k0
-    self._w_0k_ink: Evaluatable = w_0k_ink
+    self._T_k0: Evaluable = T_k0
+    self._w_0k_ink: Evaluable = w_0k_ink
     assert self._w_0k_ink.perturb_dim == 6, "Invalid velocity size."
 
   @property
@@ -36,9 +36,9 @@ class TrajectoryVar:
     return self._time
 
   @property
-  def pose(self) -> Evaluatable:
+  def pose(self) -> Evaluable:
     return self._T_k0
 
   @property
-  def velocity(self) -> Evaluatable:
+  def velocity(self) -> Evaluable:
     return self._w_0k_ink

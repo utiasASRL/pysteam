@@ -3,10 +3,10 @@ from __future__ import annotations
 import abc
 
 from .state_key import StateKey
-from .evaluatable import Evaluatable
+from .evaluable import Evaluable
 
 
-class StateVar(Evaluatable):
+class StateVar(Evaluable):
   """
   Representation of a state variable involved in the optimization problem, subclass defines what the state represents
   and the current value of the state. This class should serve as a wrapper of the variable so never create its own copy
@@ -21,7 +21,7 @@ class StateVar(Evaluatable):
 
   @property
   def active(self) -> bool:
-    """Evaluatable interface"""
+    """Evaluable interface"""
     return not self.locked
 
   @abc.abstractmethod
