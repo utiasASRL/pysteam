@@ -4,8 +4,7 @@ import timeit
 from typing import Any, Dict
 from copy import deepcopy
 
-from ..problem import OptimizationProblem
-from ..state import StateVector
+from ..problem import OptimizationProblem, StateVector
 
 
 class Solver(abc.ABC):

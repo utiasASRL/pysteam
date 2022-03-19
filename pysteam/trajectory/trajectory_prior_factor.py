@@ -1,11 +1,12 @@
 import numpy as np
 
 from pylgmath import se3op, Transformation
-from ..evaluator import Evaluator, AutoGradEvaluator
-from . import TrajectoryVar
+
+from ..evaluatable import Evaluatable, Node
+from .trajectory_var import TrajectoryVar
 
 
-class TrajectoryPriorFactor(Evaluator):
+class TrajectoryPriorFactor(Evaluatable):
 
   def __init__(self, knot1: TrajectoryVar, knot2: TrajectoryVar) -> None:
     super().__init__()
@@ -13,61 +14,69 @@ class TrajectoryPriorFactor(Evaluator):
     self._knot1: TrajectoryVar = knot1
     self._knot2: TrajectoryVar = knot2
 
-  def is_active(self):
-    return ((self._knot1.pose.is_active() or not self._knot1.velocity.locked) or
-            (self._knot2.pose.is_active() or not self._knot2.velocity.locked))
+  @property
+  def active(self) -> bool:
+    return ((self._knot1.pose.active or self._knot1.velocity.active) or
+            (self._knot2.pose.active or self._knot2.velocity.active))
 
-  def evaluate(self, lhs=None):
-    tree1 = self._knot1.pose.get_eval_tree()
-    tree2 = self._knot2.pose.get_eval_tree()
+  def forward(self) -> Node:
+    pose_node1 = self._knot1.pose.forward()
+    velocity_node1 = self._knot1.velocity.forward()
+    pose_node2 = self._knot2.pose.forward()
+    velocity_node2 = self._knot2.velocity.forward()
 
-    T_21: Transformation = tree2.value @ tree1.value.inverse()
+    T_21: Transformation = pose_node2.value @ pose_node1.value.inverse()
     xi_21 = T_21.vec()
     J_21_inv = se3op.vec2jacinv(xi_21)
     dt = (self._knot2.time - self._knot1.time).seconds
 
     error = np.empty((12, 1))
-    error[:6] = xi_21 - dt * self._knot1.velocity.value
-    error[6:] = J_21_inv @ self._knot2.velocity.value - self._knot1.velocity.value
-    if lhs is None:
-      return error
+    error[:6] = xi_21 - dt * velocity_node1.value
+    error[6:] = J_21_inv @ velocity_node2.value - velocity_node1.value
 
+    return Node(error, pose_node1, velocity_node1, pose_node2, velocity_node2)
+
+  def backward(self, lhs, node):
     jacs = dict()
 
-    if self._knot1.pose.is_active():
+    pose_node1, velocity_node1, pose_node2, velocity_node2 = node.children
+
+    T_21: Transformation = pose_node2.value @ pose_node1.value.inverse()
+    xi_21 = T_21.vec()
+    J_21_inv = se3op.vec2jacinv(xi_21)
+    dt = (self._knot2.time - self._knot1.time).seconds
+
+    if self._knot1.pose.active:
       Jinv_12: np.ndarray = J_21_inv @ T_21.adjoint()
-      # construct Jacobian
       jacobian = np.empty((12, 6))
       jacobian[:6] = -Jinv_12
-      jacobian[6:] = -0.5 * se3op.curlyhat(self._knot2.velocity.value) @ Jinv_12
+      jacobian[6:] = -0.5 * se3op.curlyhat(velocity_node2.value) @ Jinv_12
 
-      # get Jacobians
-      jacs1 = self._knot1.pose.compute_jacs(lhs @ jacobian, tree1)
-      jacs = AutoGradEvaluator.merge_jacs(jacs, jacs1)
+      jacs1 = self._knot1.pose.backward(lhs @ jacobian, pose_node1)
+      jacs = self.merge_jacs(jacs, jacs1)
 
-    if self._knot2.pose.is_active():
+    if self._knot2.pose.active:
       jacobian = np.empty((12, 6))
       jacobian[:6] = J_21_inv
-      jacobian[6:] = (0.5 * se3op.curlyhat(self._knot2.velocity.value) @ J_21_inv)
+      jacobian[6:] = (0.5 * se3op.curlyhat(velocity_node2.value) @ J_21_inv)
 
-      jacs2 = self._knot2.pose.compute_jacs(lhs @ jacobian, tree2)
-      jacs = AutoGradEvaluator.merge_jacs(jacs, jacs2)
+      jacs2 = self._knot2.pose.backward(lhs @ jacobian, pose_node2)
+      jacs = self.merge_jacs(jacs, jacs2)
 
-    if not self._knot1.velocity.locked:
-      # construct Jacobian object
+    if self._knot1.velocity.active:
       jacobian = np.empty((12, 6))
       jacobian[:6] = -dt * np.eye(6)
       jacobian[6:] = -np.eye(6)
-      jacs3 = {self._knot1.velocity.key: lhs @ jacobian}
-      jacs = AutoGradEvaluator.merge_jacs(jacs, jacs3)
 
-    if not self._knot2.velocity.locked:
-      # construct Jacobian object
+      jacs3 = self._knot1.velocity.backward(lhs @ jacobian, velocity_node1)
+      jacs = self.merge_jacs(jacs, jacs3)
+
+    if self._knot2.velocity.active:
       jacobian = np.empty((12, 6))
       jacobian[:6] = np.zeros((6, 6))
       jacobian[6:] = J_21_inv
 
-      jacs4 = {self._knot2.velocity.key: lhs @ jacobian}
-      jacs = AutoGradEvaluator.merge_jacs(jacs, jacs4)
+      jacs4 = self._knot2.velocity.backward(lhs @ jacobian, velocity_node2)
+      jacs = self.merge_jacs(jacs, jacs4)
 
-    return error, jacs
+    return jacs

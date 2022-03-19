@@ -2,9 +2,10 @@ import numpy as np
 from typing import List, Tuple
 
 from pylgmath import Transformation
+
+from ..evaluatable.se3 import SE3StateVar
+from ..evaluatable.vspace import VSpaceStateVar
 from . import Time, TrajectoryInterface
-from ..state import TransformStateVar, VectorSpaceStateVar
-from ..evaluator import TransformStateEvaluator
 
 
 class TrajectoryInterpolator:
@@ -29,8 +30,8 @@ class TrajectoryInterpolator:
     """
     for state in states:
       time = Time(secs=state[0])
-      T_k0 = TransformStateEvaluator(TransformStateVar(Transformation(T_ba=state[1])))
-      w_0k_ink = VectorSpaceStateVar(state[2])
+      T_k0 = SE3StateVar(Transformation(T_ba=state[1]))
+      w_0k_ink = VSpaceStateVar(state[2])
       self._trajectory.add_knot(time=time, T_k0=T_k0, w_0k_ink=w_0k_ink)
 
   def get_states(self, *times: List[float]):
@@ -43,7 +44,7 @@ class TrajectoryInterpolator:
     states = []
     for time in times:
       traj_time = Time(secs=time)
-      T_k0 = self._trajectory.get_interp_pose_eval(traj_time).evaluate().matrix()
-      w_0k_ink = self._trajectory.get_interp_velocity(traj_time)
+      T_k0 = self._trajectory.get_pose_interpolator(traj_time).evaluate().matrix()
+      w_0k_ink = self._trajectory.get_velocity_interpolator(traj_time).evaluate()
       states.append([time, T_k0, w_0k_ink])
     return states[0] if len(times) == 1 else states

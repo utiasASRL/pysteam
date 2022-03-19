@@ -3,8 +3,9 @@ import array
 import numpy as np
 from scipy.sparse import coo_matrix, dok_matrix
 
-from ..state import StateVar, StateVector
-from . import CostTerm
+from ..evaluatable import StateVar
+from .state_vector import StateVector
+from .cost_term import CostTerm
 
 
 class LazyCOOBuilder:

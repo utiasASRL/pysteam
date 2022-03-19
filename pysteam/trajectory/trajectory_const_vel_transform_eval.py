@@ -1,34 +1,34 @@
-import numpy as np
-
 from pylgmath import se3op, Transformation
 
-from ..state import VectorSpaceStateVar
-from ..evaluator import EvalTreeNode, TransformEvaluator
-from . import Time
+from ..evaluatable import Evaluatable, Node
+from .trajectory_var import Time
 
 
-class ConstVelTransformEvaluator(TransformEvaluator):
+class ConstVelTransformEvaluator(Evaluatable):
   """Simple transform evaluator for a constant velocity model."""
 
-  def __init__(self, velocity: VectorSpaceStateVar, time: Time):
+  def __init__(self, velocity: Evaluatable, time: Time):
     super().__init__()
-    self._velocity: VectorSpaceStateVar = velocity
+    self._velocity: Evaluatable = velocity
     self._time: Time = time
 
-  def is_active(self):
-    return not self._velocity.locked
+  @property
+  def active(self) -> bool:
+    return self._velocity.active
 
-  def get_eval_tree(self):
-    xi = self._time.seconds * self._velocity.value
-    T_tk = Transformation(xi_ab=xi)
-    return EvalTreeNode(T_tk)
+  def forward(self) -> Node:
+    child = self._velocity.forward()
+    T_tk = Transformation(xi_ab=self._time.seconds * child.value)
+    return Node(T_tk, child)
 
-  def compute_jacs(self, lhs, tree):
+  def backward(self, lhs, node):
     jacs = dict()
 
-    if not self._velocity.locked:
-      xi = self._time.seconds * self._velocity.value
+    child = node.children[0]
+
+    if self._velocity.active:
+      xi = self._time.seconds * child.value
       jac = self._time.seconds * se3op.vec2jac(xi)
-      jacs = {self._velocity.key: lhs @ jac}
+      jacs = self._velocity.backward(lhs @ jac, child)
 
     return jacs

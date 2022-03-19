@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from ..state import VectorSpaceStateVar
-from ..evaluator import TransformEvaluator
+from ..evaluatable import Evaluatable
 
 
 class Time:
@@ -26,10 +25,10 @@ class Time:
 
 class TrajectoryVar:
 
-  def __init__(self, time: Time, T_k0: TransformEvaluator, w_0k_ink: VectorSpaceStateVar) -> None:
+  def __init__(self, time: Time, T_k0: Evaluatable, w_0k_ink: Evaluatable) -> None:
     self._time: Time = time
-    self._T_k0: TransformEvaluator = T_k0
-    self._w_0k_ink: VectorSpaceStateVar = w_0k_ink
+    self._T_k0: Evaluatable = T_k0
+    self._w_0k_ink: Evaluatable = w_0k_ink
     assert self._w_0k_ink.perturb_dim == 6, "Invalid velocity size."
 
   @property
@@ -37,9 +36,9 @@ class TrajectoryVar:
     return self._time
 
   @property
-  def pose(self) -> TransformEvaluator:
+  def pose(self) -> Evaluatable:
     return self._T_k0
 
   @property
-  def velocity(self) -> VectorSpaceStateVar:
+  def velocity(self) -> Evaluatable:
     return self._w_0k_ink

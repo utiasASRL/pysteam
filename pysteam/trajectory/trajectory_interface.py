@@ -4,10 +4,15 @@ import numpy as np
 from typing import Dict, List
 
 from pylgmath import Transformation, se3op
-from ..state import VectorSpaceStateVar
-from ..evaluator import TransformEvaluator, TransformErrorEval, VectorSpaceErrorEval, ComposeTransformEvaluator
+from ..evaluatable import Evaluatable
+from ..evaluatable.se3 import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
+from ..evaluatable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvaluator
 from ..problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
-from . import Time, TrajectoryVar, TrajectoryPriorFactor, TrajectoryInterpPoseEval, ConstVelTransformEvaluator
+from .trajectory_var import Time, TrajectoryVar
+from .trajectory_prior_factor import TrajectoryPriorFactor
+from .trajectory_pose_interpolator import PoseInterpolator
+from .trajectory_velocity_interpolator import VelocityInterpolator
+from .trajectory_const_vel_transform_eval import ConstVelTransformEvaluator
 
 
 class TrajectoryInterface:
@@ -31,8 +36,8 @@ class TrajectoryInterface:
                *,
                knot: TrajectoryVar = None,
                time: Time = None,
-               T_k0: TransformEvaluator = None,
-               w_0k_ink: VectorSpaceStateVar = None) -> None:
+               T_k0: Evaluatable = None,
+               w_0k_ink: Evaluatable = None) -> None:
     if knot is not None:
       assert not knot.time.nanosecs in self._knots, "Knot already exists."
       self._knots[knot.time.nanosecs] = knot
@@ -44,7 +49,7 @@ class TrajectoryInterface:
     else:
       raise ValueError("Invalid input combination.")
 
-  def add_pose_prior(self, time: Time, pose: Transformation, cov: np.ndarray) -> None:
+  def add_pose_prior(self, time: Time, T_21: Transformation, cov: np.ndarray) -> None:
     """Add a unary pose prior factor at a knot time.
     Note that only a single pose prior should exist on a trajectory, adding a second will overwrite the first.
     """
@@ -53,12 +58,13 @@ class TrajectoryInterface:
 
     # get knot at specified time
     knot = self._knots[time.nanosecs]
-    assert knot.pose.is_active(), "Adding prior to locked pose."
+    assert knot.pose.active, "Adding prior to locked pose."
 
     # set up loss function, noise model, and error function
     loss_func = L2LossFunc()
     noise_model = StaticNoiseModel(cov, "covariance")
-    error_func = TransformErrorEval(meas_T_21=pose, T_21=knot.pose)
+    T_21_var = SE3StateVar(T_21, locked=True)
+    error_func = LogMapEvaluator(ComposeEvaluator(T_21_var, InverseEvaluator(knot.pose)))
 
     # create cost term
     self._pose_prior_factor = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
@@ -72,12 +78,13 @@ class TrajectoryInterface:
 
     # get knot at specified time
     knot = self._knots[time.nanosecs]
-    assert not knot.velocity.locked, "Adding prior to locked velocity."
+    assert knot.velocity.active, "Adding prior to locked velocity."
 
     # set up loss function, noise model, and error function
     loss_func = L2LossFunc()
     noise_model = StaticNoiseModel(cov, "covariance")
-    error_func = VectorSpaceErrorEval(w_0k_ink, knot.velocity)
+    w_0k_ink_var = VSpaceStateVar(w_0k_ink, locked=True)
+    error_func = AdditionEvaluator(w_0k_ink_var, NegationEvaluator(knot.velocity))
 
     # create cost term
     self._velocity_prior_factor = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
@@ -106,8 +113,7 @@ class TrajectoryInterface:
       knot1 = self._knots[self._ordered_nsecs[t - 1]]
       knot2 = self._knots[self._ordered_nsecs[t]]
 
-      if (knot1.pose.is_active() or not knot1.velocity.locked or knot2.pose.is_active() or
-          not knot2.velocity.locked):
+      if (knot1.pose.active or knot1.velocity.active or knot2.pose.active or knot2.velocity.active):
 
         # generate 12 x 12 information matrix for GP prior factor
         Qi_inv = np.zeros((12, 12))
@@ -127,7 +133,7 @@ class TrajectoryInterface:
 
     return cost_terms
 
-  def get_interp_pose_eval(self, time: Time) -> TrajectoryInterpPoseEval:
+  def get_pose_interpolator(self, time: Time):
     """Get transform evaluator at specified time stamp."""
     assert self._knots, "Knot dictionary is empty."
 
@@ -148,18 +154,19 @@ class TrajectoryInterface:
       elif idx == 0:
         start_knot = self._knots[self._ordered_nsecs[0]]
         T_t_k_eval = ConstVelTransformEvaluator(start_knot.velocity, time - start_knot.time)
-        return ComposeTransformEvaluator(T_t_k_eval, start_knot.pose)
+        return ComposeEvaluator(T_t_k_eval, start_knot.pose)
       # request time after the last knot
       else:
         end_knot = self._knots[self._ordered_nsecs[-1]]
         T_t_k_eval = ConstVelTransformEvaluator(end_knot.velocity, time - end_knot.time)
-        return ComposeTransformEvaluator(T_t_k_eval, end_knot.pose)
+        return ComposeEvaluator(T_t_k_eval, end_knot.pose)
 
     # request time between two knots, needs interpolation
-    return TrajectoryInterpPoseEval(time, self._knots[self._ordered_nsecs[idx - 1]],
-                                    self._knots[self._ordered_nsecs[idx]])
+    knot1 = self._knots[self._ordered_nsecs[idx - 1]]
+    knot2 = self._knots[self._ordered_nsecs[idx]]
+    return PoseInterpolator(time, knot1, knot2)
 
-  def get_interp_velocity(self, time: Time) -> np.ndarray:
+  def get_velocity_interpolator(self, time: Time):
     """Get velocity at specified time stamp. TODO: make this an evaluator."""
     assert self._knots, "Knot dictionary is empty."
 
@@ -171,55 +178,19 @@ class TrajectoryInterface:
 
     # request time exactly on a knot
     if idx < len(self._ordered_nsecs) and self._ordered_nsecs[idx] == time.nanosecs:
-      return self._knots[self._ordered_nsecs[idx]].velocity.value
+      return self._knots[self._ordered_nsecs[idx]].velocity
 
     if idx == 0 or idx == len(self._ordered_nsecs):
       if not self._allow_extrapolation:
         raise ValueError("Query time out-of-range with extrapolation disallowed.")
       # request time before first knot
       elif idx == 0:
-        return self._knots[self._ordered_nsecs[0]].velocity.value
+        return self._knots[self._ordered_nsecs[0]].velocity
       # request time after last knot
       else:
-        return self._knots[self._ordered_nsecs[-1]].velocity.value
+        return self._knots[self._ordered_nsecs[-1]].velocity
 
     # request time needs interpolation
     knot1 = self._knots[self._ordered_nsecs[idx - 1]]
     knot2 = self._knots[self._ordered_nsecs[idx]]
-
-    # calculate time constants
-    tau = (time - knot1.time).seconds
-    T = (knot2.time - knot1.time).seconds
-    ratio = tau / T
-    ratio2 = ratio * ratio
-    ratio3 = ratio2 * ratio
-
-    # calculate 'psi' interpolation values
-    psi11 = 3.0 * ratio2 - 2.0 * ratio3
-    psi12 = tau * (ratio2 - ratio)
-    psi21 = 6.0 * (ratio - ratio2) / T
-    psi22 = 3.0 * ratio2 - 2.0 * ratio
-
-    # calculate (some of the) 'lambda' interpolation values
-    lambda12 = tau - T * psi11 - psi12
-    lambda22 = 1.0 - T * psi21 - psi22
-
-    # get relative matrix info
-    T_21 = knot2.pose.evaluate() @ knot1.pose.evaluate().inverse()
-
-    # get se3 algebra of relative matrix (and cache it)
-    xi_21 = T_21.vec()
-
-    # calculate the 6x6 associated Jacobian (and cache it)
-    J_21_inv = se3op.vec2jacinv(xi_21)
-
-    # calculate interpolated relative se3 algebra
-    xi_i1 = lambda12 * knot1.velocity.value + psi11 * xi_21 + psi12 * J_21_inv @ knot2.velocity.value
-
-    # calculate the 6x6 associated Jacobian
-    J_t1 = se3op.vec2jac(xi_i1)
-
-    # calculate interpolated relative se3 algebra
-    xi_it = J_t1 @ (lambda22 * knot1.velocity.value + psi21 * xi_21 + psi22 * J_21_inv @ knot2.velocity.value)
-
-    return xi_it
+    return VelocityInterpolator(time, knot1, knot2)

@@ -1,8 +1,8 @@
 from typing import Optional
 import numpy as np
 
-from ..state import LandmarkStateVar
-from . import EvalTreeNode, Evaluator, TransformEvaluator, ComposeLandmarkEvaluator
+from ..state_key import StateKey
+from ..evaluatable import Evaluatable, Node
 
 
 class CameraIntrinsics:
@@ -46,31 +46,36 @@ def camera_model_jac(ints: CameraIntrinsics, p: np.ndarray) -> np.ndarray:
   return dgdp
 
 
-class StereoCameraErrorEval(Evaluator):
+class StereoErrorEvaluator(Evaluatable):
   """Stereo camera error function evaluator."""
 
-  def __init__(self, meas: np.ndarray, intrinsics: CameraIntrinsics, T_cam_landmark: TransformEvaluator,
-               landmark: LandmarkStateVar):
+  def __init__(self, meas: np.ndarray, intrinsics: CameraIntrinsics, landmark: Evaluatable):
     super().__init__()
 
     self._meas: np.ndarray = meas
     self._intrinsics: CameraIntrinsics = intrinsics
-    self._error_eval: TransformEvaluator = ComposeLandmarkEvaluator(T_cam_landmark, landmark)
+    self._landmark: Evaluatable = landmark
 
-  def is_active(self):
-    return self._error_eval.is_active()
+  @property
+  def active(self) -> bool:
+    return self._landmark.active
 
-  def evaluate(self, lhs: Optional[np.ndarray] = None):
+  def forward(self) -> Node:
+    child = self._landmark.forward()
 
-    tree: EvalTreeNode = self._error_eval.get_eval_tree()
-    point_in_cam_frame: np.ndarray = tree.value
-
+    point_in_cam_frame: np.ndarray = child.value
     error = self._meas - camera_model(self._intrinsics, point_in_cam_frame)
 
-    if lhs is None:
-      return error
+    return Node(error, child)
 
-    lhs = -lhs @ camera_model_jac(self._intrinsics, point_in_cam_frame)
-    jacs = self._error_eval.compute_jacs(lhs, tree)
+  def backward(self, lhs, node):
+    jacs = dict()
 
-    return error, jacs
+    if self._landmark.active:
+      child = node.children[0]
+
+      point_in_cam_frame: np.ndarray = child.value
+      lhs = -lhs @ camera_model_jac(self._intrinsics, point_in_cam_frame)
+
+      jacs = self._landmark.backward(lhs, child)
+    return jacs
