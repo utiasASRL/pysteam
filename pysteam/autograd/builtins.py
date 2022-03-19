@@ -181,6 +181,39 @@ def reshape(x, *args, **kwargs):
         return np.reshape(x, *args, **kwargs)
 defvjp(reshape, lambda ans, x, _, order=None : lambda g: reshape(g, shape(x), order=order))
 
+def array(A, *args, **kwargs):
+    t = type(A)
+    if t in (list, tuple):
+        return array_from_args(args, kwargs, *map(array, A))
+    else:
+        return array_from_scalar_or_array(args, kwargs, A)
+
+@primitive
+def array_from_scalar_or_array(array_args, array_kwargs, scalar):
+    return np.array(scalar, *array_args, **array_kwargs)
+
+@primitive
+def array_from_args(array_args, array_kwargs, *args):
+    return np.array(args, *array_args, **array_kwargs)
+
+def array_from_args_gradmaker(argnum, ans, args, kwargs):
+    return lambda g: g[argnum-2]
+defvjp_argnum(array_from_args, array_from_args_gradmaker)
+
+@primitive
+def squeeze(s, axis=None):
+    return np.squeeze(s, axis)
+defvjp(squeeze, lambda ans, x, axis=None    : lambda g: reshape(g, shape(x)))
+
+def array_from_scalar_or_array_gradmaker(ans, array_args, array_kwargs, scarray):
+    ndmin = array_kwargs.get('ndmin', 0)
+    scarray_ndim = ndim(scarray)
+    if ndmin > scarray_ndim:
+        return lambda g: squeeze(g, axis=tuple(range(ndmin - scarray_ndim)))
+    else:
+        return lambda g: g
+defvjp(array_from_scalar_or_array, array_from_scalar_or_array_gradmaker, argnums=(2,3))
+
 @primitive
 def concatenate_args(axis, *args):
     return np.concatenate(args, axis).view(np.ndarray)
@@ -200,12 +233,7 @@ def stack(arrays, axis=0):
     # this code is basically copied from numpy/core/shape_base.py's stack
     # we need it here because we want to re-implement stack in terms of the
     # primitives defined in this file
-    # arrays = [array(arr) for arr in arrays]  # original version: can convert non-array to array
-    arrays = [arr for arr in arrays]
-    if not all(isinstance(arr, np.ndarray) for arr in arrays):
-        for arr in arrays:
-            print(isinstance(arr, np.ndarray), arr)
-        raise TypeError("`stack` only supports np arrays")
+    arrays = [array(arr) for arr in arrays]
     if not arrays:
         raise ValueError('need at least one array to stack')
 
