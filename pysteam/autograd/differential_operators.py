@@ -1,8 +1,8 @@
 """Convenience functions built on top of `make_vjp`."""
+from itertools import repeat, starmap
 from .wrap_util import unary_to_nary
 from .core import make_vjp as _make_vjp
 from .extend import primitive, defvjp_argnum, vspace
-from .builtins import reshape, stack
 
 make_vjp = unary_to_nary(_make_vjp)
 
@@ -20,6 +20,17 @@ def grad(fun, x):
     return vjp(vspace(ans).ones())
 
 @unary_to_nary
+def value_and_grad(fun, x):
+    """Returns a function that returns both value and gradient. Suitable for use
+    in scipy.optimize"""
+    vjp, ans = _make_vjp(fun, x)
+    if not vspace(ans).size == 1:
+        raise TypeError("value_and_grad only applies to real scalar-output "
+                        "functions. Try jacobian, elementwise_grad or "
+                        "holomorphic_grad.")
+    return ans, vjp(vspace(ans).ones())
+
+@unary_to_nary
 def elementwise_grad(fun, x):
     """
     Returns a function that computes the sum of each column of the Jacobian of
@@ -31,46 +42,23 @@ def elementwise_grad(fun, x):
         raise TypeError("Elementwise_grad only applies to real-output functions.")
     return vjp(vspace(ans).ones())
 
+
+import numpy as np
+
 @unary_to_nary
 def jacobian(fun, x):
     """
-    Returns a function which computes the Jacobian of `fun` with respect to
-    positional argument number `argnum`, which must be a scalar or array. Unlike
-    `grad` it is not restricted to scalar-output functions, but also it cannot
-    take derivatives with respect to some argument types (like lists or dicts).
-    If the input to `fun` has shape (in1, in2, ...) and the output has shape
-    (out1, out2, ...) then the Jacobian has shape (out1, out2, ..., in1, in2, ...).
+    Note that this is not the same as how AutoGrad computes the Jacobian. It
+    accepts multiple variables but cannot be used to compute Hessian because
+    np.stack and np.reshape are not autograd friendly.
     """
     vjp, ans = _make_vjp(fun, x)
     ans_vspace = vspace(ans)
-    jacobian_shape = ans_vspace.shape + vspace(x).shape
+    in_vspace_shape = list(vspace(x).shape)
+    jacobian_shape = starmap(lambda a, b: a+b.shape,
+                             zip(repeat(ans_vspace.shape, len(in_vspace_shape)), in_vspace_shape))
     grads = map(vjp, ans_vspace.standard_basis())
-    return reshape(stack(grads), jacobian_shape)
-
-@unary_to_nary
-def hessian(fun, x):
-    "Returns a function that computes the exact Hessian."
-    return jacobian(jacobian(fun))(x)
-
-@unary_to_nary
-def value_and_grad(fun, x):
-    """Returns a function that returns both value and gradient. Suitable for use
-    in scipy.optimize"""
-    vjp, ans = _make_vjp(fun, x)
-    if not vspace(ans).size == 1:
-        raise TypeError("value_and_grad only applies to real scalar-output "
-                        "functions. Try jacobian, elementwise_grad or "
-                        "holomorphic_grad.")
-    return ans, vjp(vspace(ans).ones())
-
-def checkpoint(fun):
-    """Returns a checkpointed version of `fun`, where intermediate values
-    computed during the forward pass of `fun` are discarded and then recomputed
-    for the backward pass. Useful to save memory, effectively trading off time
-    and memory. See e.g. arxiv.org/abs/1604.06174.
-    """
-    def wrapped_grad(argnum, ans, args, kwargs):
-        return make_vjp(fun, argnum)(*args, **kwargs)[0]
-    wrapped = primitive(fun)
-    defvjp_argnum(wrapped, wrapped_grad)
-    return wrapped
+    # following operations are not autograd-friendly
+    stacked = map(np.stack, zip(*grads))
+    jacs = starmap(np.reshape, zip(stacked, jacobian_shape))
+    return tuple(jacs)
