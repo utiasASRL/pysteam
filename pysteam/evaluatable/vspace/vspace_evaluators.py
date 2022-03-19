@@ -28,6 +28,7 @@ class NegationEvaluator(Evaluatable):
       jacs = self._value.backward(lhs, node.children[0])
     return jacs
 
+neg = NegationEvaluator
 
 class AdditionEvaluator(Evaluatable):
   """Evaluator for the addition of two vectors."""
@@ -58,3 +59,30 @@ class AdditionEvaluator(Evaluatable):
       jacs = self.merge_jacs(jacs, jacs2)
 
     return jacs
+
+add = AdditionEvaluator
+
+class ScalarMultEvaluator(Evaluatable):
+
+  def __init__(self, value: Evaluatable, scalar: float) -> None:
+    super().__init__()
+    self._value: Evaluatable = value
+    self._scalar: float = scalar
+
+  @property
+  def active(self) -> bool:
+    return self._value.active
+
+  def forward(self) -> Node:
+    child = self._value.forward()
+    value = self._scalar * child.value
+    return Node(value, child)
+
+  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
+    jacs = dict()
+    if self._value.active:
+      lhs = self._scalar * lhs
+      jacs = self._value.backward(lhs, node.children[0])
+    return jacs
+
+smult = ScalarMultEvaluator
