@@ -161,6 +161,34 @@ class ComposeInverseEvaluator(Evaluatable):
 compose_rinv = ComposeInverseEvaluator
 
 
+class JacobianEvaluator(Evaluatable):
+  """Evaluator of Jacobian."""
+
+  def __init__(self, value: Evaluatable) -> None:
+    super().__init__()
+    self._value = value
+
+  @property
+  def active(self) -> bool:
+    return self._value.active
+
+  def forward(self) -> Node:
+    child = self._value.forward()
+    value = se3op.vec2jac(child.value)
+    return Node(value, child)
+
+  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
+    print("WARNING: JacobianEvaluator.backward computation may be incorrect!")
+    jacs = dict()
+    if self._value.active:
+      lhs = 2.0 * lhs  # TODO: check this
+      jacs = self._value.backward(lhs, node.children[0])
+    return jacs
+
+
+vec2jac = JacobianEvaluator
+
+
 class JacobianInvEvaluator(Evaluatable):
   """Evaluator of Jacobian Inv."""
 

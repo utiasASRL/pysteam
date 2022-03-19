@@ -1,9 +1,7 @@
-import numpy as np
-
-from pylgmath import se3op, Transformation
-
 from ..evaluatable import Evaluatable, Node
+from ..evaluatable import se3 as se3ev, vspace as vspaceev
 from .trajectory_var import Time, TrajectoryVar
+from .evaluators import j_velocity, jinv_velocity
 
 
 class VelocityInterpolator(Evaluatable):
@@ -33,40 +31,39 @@ class VelocityInterpolator(Evaluatable):
     self._lambda21 = -self._psi21
     self._lambda22 = 1.0 - T * self._psi21 - self._psi22
 
+    ## construct computation graph
+    T1 = self._knot1.pose
+    w1 = self._knot1.velocity
+    T2 = self._knot2.pose
+    w2 = self._knot2.velocity
+    # get relative matrix info
+    T_21 = se3ev.compose_rinv(T2, T1)
+    # get se3 algebra of relative matrix
+    xi_21 = se3ev.tran2vec(T_21)
+    # calculate the 6x6 associated Jacobian
+    J_21_inv = se3ev.vec2jacinv(xi_21)
+    # calculate interpolated relative se3 algebra
+    _t1 = vspaceev.smult(w1, self._lambda12)
+    _t2 = vspaceev.smult(xi_21, self._psi11)
+    _t3 = vspaceev.smult(jinv_velocity(J_21_inv, w2), self._psi12)
+    xi_i1 = vspaceev.add(_t1, vspaceev.add(_t2, _t3))
+    # calculate the 6x6 associated Jacobian
+    J_t1 = se3ev.vec2jac(xi_i1)  # TODO: jacobian of this
+    # calculate interpolated relative se3 algebra
+    _s1 = vspaceev.smult(w1, self._lambda22)
+    _s2 = vspaceev.smult(xi_21, self._psi21)
+    _s3 = vspaceev.smult(jinv_velocity(J_21_inv, w2), self._psi22)
+    xi_it_linear = vspaceev.add(_s1, vspaceev.add(_s2, _s3))
+    xi_it = j_velocity(J_t1, xi_it_linear)  # TODO: jacobian of this
+    self._xi_it = xi_it
+
   @property
   def active(self) -> bool:
     return ((self._knot1.pose.active or self._knot1.velocity.active) or
             (self._knot2.pose.active or self._knot2.velocity.active))
 
   def forward(self) -> Node:
-    # evaluate sub-trees
-    pose_node1 = self._knot1.pose.forward()
-    velocity_node1 = self._knot1.velocity.forward()
-    pose_node2 = self._knot2.pose.forward()
-    velocity_node2 = self._knot2.velocity.forward()
-
-    # get relative matrix info
-    T_21: Transformation = pose_node2.value @ pose_node1.value.inverse()
-
-    # get se3 algebra of relative matrix
-    xi_21: np.ndarray = T_21.vec()
-
-    # calculate the 6x6 associated Jacobian
-    J_21_inv = se3op.vec2jacinv(xi_21)
-
-    # calculate interpolated relative se3 algebra
-    xi_i1 = (self._lambda12 * velocity_node1.value + self._psi11 * xi_21 +
-             self._psi12 * J_21_inv @ velocity_node2.value)
-
-    # calculate the 6x6 associated Jacobian
-    J_t1 = se3op.vec2jac(xi_i1)
-
-    # calculate interpolated relative se3 algebra
-    xi_it = J_t1 @ (self._lambda22 * velocity_node1.value + self._psi21 * xi_21 +
-                    self._psi22 * J_21_inv @ velocity_node2.value)
-
-    # interpolated relative transform - new root node
-    return Node(xi_it, pose_node1, velocity_node1, pose_node2, velocity_node2)
+    return self._xi_it.forward()
 
   def backward(self, lhs, node):
-    raise NotImplementedError
+    return self._xi_it.backward(lhs, node)

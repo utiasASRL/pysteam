@@ -1,7 +1,3 @@
-import numpy as np
-
-from pylgmath import se3op, Transformation
-
 from ..evaluatable import Evaluatable, Node
 from ..evaluatable import se3 as se3ev, vspace as vspaceev
 from .trajectory_var import Time, TrajectoryVar
