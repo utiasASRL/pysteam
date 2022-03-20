@@ -69,7 +69,7 @@ class JinvVelocityEvaluator(Evaluable):
     xi, velocity = node.children
 
     if self._xi.active:
-      jacs = self._jacinv.backward(0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jacinv(xi.value), xi)
+      jacs = self._xi.backward(0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jacinv(xi.value), xi)
 
     if self._velocity.active:
       jacs2 = self._velocity.backward(lhs @ se3op.vec2jacinv(xi.value), velocity)
