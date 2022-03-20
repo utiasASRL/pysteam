@@ -10,33 +10,32 @@ from ..evaluable import Evaluable, Node
 class JVelocityEvaluator(Evaluable):
   """Evaluator for the composition of left Jacobian and velocity."""
 
-  def __init__(self, left_jac: Evaluable, velocity: Evaluable):
+  def __init__(self, xi: Evaluable, velocity: Evaluable):
     super().__init__()
-    self._left_jac: Evaluable = left_jac
+    self._xi: Evaluable = xi
     self._velocity: Evaluable = velocity
 
   @property
   def active(self) -> bool:
-    return self._left_jac.active or self._velocity.active
+    return self._xi.active or self._velocity.active
 
   def forward(self) -> Node:
-    left_jac = self._left_jac.forward()
+    xi = self._xi.forward()
     velocity = self._velocity.forward()
 
-    value = left_jac.value @ velocity.value
-    return Node(value, left_jac, velocity)
+    value = se3op.vec2jac(xi.value) @ velocity.value
+    return Node(value, xi, velocity)
 
   def backward(self, lhs, node):
-    print("WARNING: JVelocityEvaluator.backward computation may be incorrect.")
     jacs = dict()
 
-    left_jac, velocity = node.children
+    xi, velocity = node.children
 
-    if self._left_jac.active:
-      jacs = self._left_jac.backward(lhs @ se3op.curlyhat(velocity.value), left_jac)
+    if self._xi.active:
+      jacs = self._xi.backward(-0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jac(xi.value), xi)
 
     if self._velocity.active:
-      jacs2 = self._velocity.backward(lhs @ left_jac.value, velocity)
+      jacs2 = self._velocity.backward(lhs @ se3op.vec2jac(xi.value), velocity)
       jacs = self.merge_jacs(jacs, jacs2)
 
     return jacs
@@ -48,32 +47,32 @@ j_velocity = JVelocityEvaluator
 class JinvVelocityEvaluator(Evaluable):
   """Evaluator for the composition of Jinv and Velocity."""
 
-  def __init__(self, jacinv: Evaluable, velocity: Evaluable):
+  def __init__(self, xi: Evaluable, velocity: Evaluable):
     super().__init__()
-    self._jacinv: Evaluable = jacinv
+    self._xi: Evaluable = xi
     self._velocity: Evaluable = velocity
 
   @property
   def active(self) -> bool:
-    return self._jacinv.active or self._velocity.active
+    return self._xi.active or self._velocity.active
 
   def forward(self) -> Node:
-    jacinv = self._jacinv.forward()
+    xi = self._xi.forward()
     velocity = self._velocity.forward()
 
-    value = jacinv.value @ velocity.value
-    return Node(value, jacinv, velocity)
+    value = se3op.vec2jacinv(xi.value) @ velocity.value
+    return Node(value, xi, velocity)
 
   def backward(self, lhs, node):
     jacs = dict()
 
-    jacinv, velocity = node.children
+    xi, velocity = node.children
 
-    if self._jacinv.active:
-      jacs = self._jacinv.backward(lhs @ se3op.curlyhat(velocity.value), jacinv)
+    if self._xi.active:
+      jacs = self._jacinv.backward(0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jacinv(xi.value), xi)
 
     if self._velocity.active:
-      jacs2 = self._velocity.backward(lhs @ jacinv.value, velocity)
+      jacs2 = self._velocity.backward(lhs @ se3op.vec2jacinv(xi.value), velocity)
       jacs = self.merge_jacs(jacs, jacs2)
 
     return jacs

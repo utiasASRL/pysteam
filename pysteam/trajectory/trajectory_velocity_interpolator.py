@@ -40,21 +40,17 @@ class VelocityInterpolator(Evaluable):
     T_21 = se3ev.compose_rinv(T2, T1)
     # get se3 algebra of relative matrix
     xi_21 = se3ev.tran2vec(T_21)
-    # calculate the 6x6 associated Jacobian
-    J_21_inv = se3ev.vec2jacinv(xi_21)
     # calculate interpolated relative se3 algebra
     _t1 = vspaceev.smult(w1, self._lambda12)
     _t2 = vspaceev.smult(xi_21, self._psi11)
-    _t3 = vspaceev.smult(jinv_velocity(J_21_inv, w2), self._psi12)
+    _t3 = vspaceev.smult(jinv_velocity(xi_21, w2), self._psi12)
     xi_i1 = vspaceev.add(_t1, vspaceev.add(_t2, _t3))
-    # calculate the 6x6 associated Jacobian
-    J_t1 = se3ev.vec2jac(xi_i1)  # TODO: jacobian of this
     # calculate interpolated relative se3 algebra
     _s1 = vspaceev.smult(w1, self._lambda22)
     _s2 = vspaceev.smult(xi_21, self._psi21)
-    _s3 = vspaceev.smult(jinv_velocity(J_21_inv, w2), self._psi22)
+    _s3 = vspaceev.smult(jinv_velocity(xi_21, w2), self._psi22)
     xi_it_linear = vspaceev.add(_s1, vspaceev.add(_s2, _s3))
-    xi_it = j_velocity(J_t1, xi_it_linear)  # TODO: jacobian of this
+    xi_it = j_velocity(xi_i1, xi_it_linear)
     self._xi_it = xi_it
 
   @property
