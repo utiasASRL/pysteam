@@ -10,9 +10,9 @@ from ..evaluable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvalua
 from ..problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
 from .trajectory_var import Time, TrajectoryVar
 from .trajectory_prior_factor import TrajectoryPriorFactor
+from .trajectory_pose_extrapolator import PoseExtrapolator
 from .trajectory_pose_interpolator import PoseInterpolator
 from .trajectory_velocity_interpolator import VelocityInterpolator
-from .trajectory_const_vel_transform_eval import ConstVelTransformEvaluator
 
 
 class TrajectoryInterface:
@@ -153,12 +153,12 @@ class TrajectoryInterface:
       # request time before the first knot
       elif idx == 0:
         start_knot = self._knots[self._ordered_nsecs[0]]
-        T_t_k_eval = ConstVelTransformEvaluator(start_knot.velocity, time - start_knot.time)
+        T_t_k_eval = PoseExtrapolator(start_knot.velocity, time - start_knot.time)
         return ComposeEvaluator(T_t_k_eval, start_knot.pose)
       # request time after the last knot
       else:
         end_knot = self._knots[self._ordered_nsecs[-1]]
-        T_t_k_eval = ConstVelTransformEvaluator(end_knot.velocity, time - end_knot.time)
+        T_t_k_eval = PoseExtrapolator(end_knot.velocity, time - end_knot.time)
         return ComposeEvaluator(T_t_k_eval, end_knot.pose)
 
     # request time between two knots, needs interpolation

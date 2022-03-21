@@ -4,7 +4,7 @@ from ..evaluable import Evaluable, Node
 from .trajectory_var import Time
 
 
-class ConstVelTransformEvaluator(Evaluable):
+class PoseExtrapolator(Evaluable):
   """Simple transform evaluator for a constant velocity model."""
 
   def __init__(self, velocity: Evaluable, time: Time):
