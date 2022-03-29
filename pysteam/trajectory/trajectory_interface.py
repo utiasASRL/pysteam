@@ -3,15 +3,16 @@ from __future__ import annotations
 import numpy as np
 from typing import Dict, List
 
-from pylgmath import Transformation, se3op
+from pylgmath import Transformation
+
 from ..evaluable import Evaluable
 from ..evaluable.se3 import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
 from ..evaluable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvaluator
 from ..problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
-from .trajectory_var import Time, TrajectoryVar
-from .trajectory_prior_factor import TrajectoryPriorFactor
 from .trajectory_pose_extrapolator import PoseExtrapolator
 from .trajectory_pose_interpolator import PoseInterpolator
+from .trajectory_prior_factor import TrajectoryPriorFactor
+from .trajectory_var import Time, TrajectoryVar
 from .trajectory_velocity_interpolator import VelocityInterpolator
 
 

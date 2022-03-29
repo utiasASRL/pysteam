@@ -1,9 +1,8 @@
 import numpy as np
 import numpy.linalg as npla
-import scipy.linalg as spla
 
-from . import GaussNewtonSolver
 from ..problem import OptimizationProblem
+from . import GaussNewtonSolver
 
 
 class DoglegGaussNewtonSolver(GaussNewtonSolver):

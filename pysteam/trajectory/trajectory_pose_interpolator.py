@@ -1,4 +1,6 @@
-from ..evaluable import Evaluable, Node
+import numpy as np
+
+from ..evaluable import Evaluable, Node, Jacobians
 from ..evaluable import se3 as se3ev, vspace as vspaceev
 from .trajectory_var import Time, TrajectoryVar
 from .evaluators import jinv_velocity
@@ -60,5 +62,5 @@ class PoseInterpolator(Evaluable):
   def forward(self) -> Node:
     return self._T_i0.forward()
 
-  def backward(self, lhs, node):
-    return self._T_i0.backward(lhs, node)
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    self._T_i0.backward(lhs, node, jacs)

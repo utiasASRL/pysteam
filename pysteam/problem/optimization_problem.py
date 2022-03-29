@@ -1,7 +1,7 @@
-from typing import List, Tuple
 import array
 import numpy as np
-from scipy.sparse import coo_matrix, dok_matrix
+from typing import List, Tuple
+from scipy.sparse import coo_matrix
 
 from ..evaluable import StateVar
 from .state_vector import StateVector

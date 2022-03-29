@@ -3,8 +3,8 @@ import numpy.linalg as npla
 import scipy.linalg as spla
 import scipy.sparse.linalg as spla_sparse
 
-from . import Solver
 from ..problem import OptimizationProblem
+from . import Solver
 
 
 class GaussNewtonSolver(Solver):

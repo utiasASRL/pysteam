@@ -1,10 +1,8 @@
-from typing import Dict
 import numpy as np
 
 from pylgmath import se3op
 
-from ..state_key import StateKey
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 
 
 class P2PErrorEvaluator(Evaluable):
@@ -37,11 +35,9 @@ class P2PErrorEvaluator(Evaluable):
     value = self._D @ (self._reference - child.value.matrix() @ self._query)
     return Node(value, child)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
-    child = node.children[0]
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._T_rq.active:
+      child = node.children[0]
       T_rq = child.value.matrix()
       lhs = -lhs @ self._D @ se3op.point2fs(T_rq @ self._query)
-      jacs = self._T_rq.backward(lhs, child)
-    return jacs
+      self._T_rq.backward(lhs, child, jacs)

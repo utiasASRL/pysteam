@@ -1,4 +1,6 @@
-from ..evaluable import Evaluable, Node
+import numpy as np
+
+from ..evaluable import Evaluable, Node, Jacobians
 from ..evaluable import se3 as se3ev, vspace as vspaceev
 from .trajectory_var import Time, TrajectoryVar
 from .evaluators import j_velocity, jinv_velocity
@@ -61,5 +63,5 @@ class VelocityInterpolator(Evaluable):
   def forward(self) -> Node:
     return self._xi_it.forward()
 
-  def backward(self, lhs, node):
-    return self._xi_it.backward(lhs, node)
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    self._xi_it.backward(lhs, node, jacs)

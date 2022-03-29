@@ -1,8 +1,6 @@
-from typing import Optional
 import numpy as np
 
-from ..state_key import StateKey
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 
 
 class CameraIntrinsics:
@@ -68,14 +66,11 @@ class StereoErrorEvaluator(Evaluable):
 
     return Node(error, child)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._landmark.active:
       child = node.children[0]
 
       point_in_cam_frame: np.ndarray = child.value
       lhs = -lhs @ camera_model_jac(self._intrinsics, point_in_cam_frame)
 
-      jacs = self._landmark.backward(lhs, child)
-    return jacs
+      self._landmark.backward(lhs, child, jacs)

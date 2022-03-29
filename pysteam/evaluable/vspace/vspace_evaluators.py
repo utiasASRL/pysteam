@@ -1,8 +1,6 @@
-from typing import Dict
 import numpy as np
 
-from ..state_key import StateKey
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 
 
 class NegationEvaluator(Evaluable):
@@ -21,14 +19,13 @@ class NegationEvaluator(Evaluable):
     value = -child.value
     return Node(value, child)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._value.active:
-      lhs = -lhs
-      jacs = self._value.backward(lhs, node.children[0])
-    return jacs
+      self._value.backward(-lhs, node.children[0], jacs)
+
 
 neg = NegationEvaluator
+
 
 class AdditionEvaluator(Evaluable):
   """Evaluator for the addition of two vectors."""
@@ -48,19 +45,15 @@ class AdditionEvaluator(Evaluable):
     value = lhs.value + rhs.value
     return Node(value, lhs, rhs)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._lhs.active:
-      jacs = self._lhs.backward(lhs, node.children[0])
-
+      self._lhs.backward(lhs, node.children[0], jacs)
     if self._rhs.active:
-      jacs2 = self._rhs.backward(lhs, node.children[1])
-      jacs = self.merge_jacs(jacs, jacs2)
+      self._rhs.backward(lhs, node.children[1], jacs)
 
-    return jacs
 
 add = AdditionEvaluator
+
 
 class ScalarMultEvaluator(Evaluable):
 
@@ -78,11 +71,9 @@ class ScalarMultEvaluator(Evaluable):
     value = self._scalar * child.value
     return Node(value, child)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._value.active:
-      lhs = self._scalar * lhs
-      jacs = self._value.backward(lhs, node.children[0])
-    return jacs
+      self._value.backward(self._scalar * lhs, node.children[0], jacs)
+
 
 smult = ScalarMultEvaluator

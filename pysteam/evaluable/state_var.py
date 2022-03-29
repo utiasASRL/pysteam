@@ -24,10 +24,6 @@ class StateVar(Evaluable):
     """Evaluable interface"""
     return not self.locked
 
-  @abc.abstractmethod
-  def clone(other: StateVar):
-    """Creats a copy of this state variable including its current value"""
-
   @property
   @abc.abstractmethod
   def value(self):

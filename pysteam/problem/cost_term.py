@@ -1,9 +1,9 @@
 import abc
-from typing import Dict, Tuple
 import numpy as np
 import numpy.linalg as npla
+from typing import Tuple
 
-from ..evaluable import Evaluable, StateKey
+from ..evaluable import Evaluable, Jacobians
 from .loss_func import LossFunc
 from .noise_model import NoiseModel
 from .state_vector import StateVector
@@ -56,13 +56,14 @@ class WeightedLeastSquareCostTerm(CostTerm):
         idx2 = state_vector.get_state_indices(key2)
         A[idx1, idx2] += jac1.T @ jac2
 
-  def eval_weighted_and_whitened(self) -> Tuple[np.ndarray, Dict[StateKey, np.ndarray]]:
+  def eval_weighted_and_whitened(self) -> Tuple[np.ndarray, Jacobians]:
     """Computes the weighted and whitened errors and jacobians.
       err = sqrt(w)*sqrt(R^-1)*rawError
       jac = sqrt(w)*sqrt(R^-1)*rawJacobian
     """
     # get raw error and Jacobians
-    raw_error, jacs = self._error_func.evaluate(self._noise_model.get_sqrt_information())
+    jacs = Jacobians()
+    raw_error = self._error_func.evaluate(self._noise_model.get_sqrt_information(), jacs)
     # get whitened error vector
     white_error = self._noise_model.whiten_error(raw_error)
     # get weight from loss function (IRLS)

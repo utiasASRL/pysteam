@@ -1,9 +1,6 @@
 import abc
-import operator
-from typing import Dict
 import numpy as np
-
-from .state_key import StateKey
+from collections import UserDict
 
 
 class Node:
@@ -14,36 +11,34 @@ class Node:
     self.children = list(children)
 
 
+class Jacobians(UserDict):
+
+  def add(self, key, value):
+    if key in self.keys():
+      self[key] += value
+    else:
+      self[key] = value
+
+
 class Evaluable(abc.ABC):
   """Base class that defines the general 'evaluator' interface."""
+
+  def evaluate(self, lhs: np.ndarray = None, jacs: Jacobians = None):
+    """Interface for the general 'evaluation', optionally with Jacobians."""
+    end_node = self.forward()
+    if lhs is not None:
+      self.backward(lhs, end_node, jacs)
+    return end_node.value
 
   @property
   @abc.abstractmethod
   def active(self) -> bool:
     """Returns whether or not an evaluator contains unlocked state variables."""
 
-  def evaluate(self, lhs: np.ndarray = None):
-    """Interface for the general 'evaluation', optionally with Jacobians."""
-    # forward pass
-    end_node = self.forward()
-    if lhs is None:
-      return end_node.value
-    else:
-      return end_node.value, self.backward(lhs, end_node)
-
   @abc.abstractmethod
   def forward(self) -> Node:
     """Forward pass with operation recorded"""
 
   @abc.abstractmethod
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     """Backward pass to compute jacobian"""
-
-  @staticmethod
-  def merge_jacs(a, b, op=operator.add):
-    """Utility function to merge Jabobians w.r.t. the same variables"""
-    # Start with symmetric difference; keys either in a or b, but not both
-    merged = {k: a.get(k, b.get(k)) for k in a.keys() ^ b.keys()}
-    # Update with `op()` applied to the intersection
-    merged.update({k: op(a[k], b[k]) for k in a.keys() & b.keys()})
-    return merged

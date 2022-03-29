@@ -3,7 +3,7 @@ import numpy as np
 from pylgmath import se3op, Transformation
 
 from ..state_var import StateVar
-from ..evaluable import Node
+from ..evaluable import Node, Jacobians
 
 
 class SE3StateVar(StateVar):
@@ -16,11 +16,9 @@ class SE3StateVar(StateVar):
   def forward(self):
     return Node(self._value)
 
-  def backward(self, lhs, node):
-    return {self.key: lhs} if self.active else {}
-
-  def clone(self):
-    raise NotImplementedError
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    if self.active:
+      jacs.add(self.key, lhs)
 
   @property
   def value(self) -> Transformation:

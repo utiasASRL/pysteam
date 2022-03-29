@@ -1,10 +1,8 @@
-from typing import Optional
 import numpy as np
 
 from pylgmath import se3op
 
-from ..state_key import StateKey
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 
 
 class ComposeLandmarkEvaluator(Evaluable):
@@ -27,19 +25,14 @@ class ComposeLandmarkEvaluator(Evaluable):
 
     return Node(value, transform_child, landmark_child)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     transform_child, landmark_child = node.children
 
     if self._transform.active:
       homogeneous = node.value
       new_lhs = lhs @ se3op.point2fs(homogeneous)
-      jacs = self._transform.backward(new_lhs, transform_child)
+      self._transform.backward(new_lhs, transform_child, jacs)
 
     if self._landmark.active:
       land_jac = transform_child.value.matrix()[:4, :3]
-      jac2 = self._landmark.backward(lhs @ land_jac, landmark_child)
-      jacs = self.merge_jacs(jacs, jac2)
-
-    return jacs
+      self._landmark.backward(lhs @ land_jac, landmark_child, jacs)

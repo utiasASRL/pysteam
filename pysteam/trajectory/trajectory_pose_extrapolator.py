@@ -1,6 +1,8 @@
+import numpy as np
+
 from pylgmath import se3op, Transformation
 
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 from .trajectory_var import Time
 
 
@@ -21,14 +23,9 @@ class PoseExtrapolator(Evaluable):
     T_tk = Transformation(xi_ab=self._time.seconds * child.value)
     return Node(T_tk, child)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
-    child = node.children[0]
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._velocity.active:
+      child = node.children[0]
       xi = self._time.seconds * child.value
       jac = self._time.seconds * se3op.vec2jac(xi)
-      jacs = self._velocity.backward(lhs @ jac, child)
-
-    return jacs
+      self._velocity.backward(lhs @ jac, child, jacs)

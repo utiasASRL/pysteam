@@ -1,10 +1,8 @@
-from typing import Dict
 import numpy as np
 
 from pylgmath import se3op, Transformation
 
-from ..state_key import StateKey
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 
 
 class ExpMapEvaluator(Evaluable):
@@ -23,12 +21,10 @@ class ExpMapEvaluator(Evaluable):
     value = Transformation(xi_ab=child.value)
     return Node(value, child)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._value.active:
       lhs = lhs @ se3op.vec2jac(node.value.vec())
-      jacs = self._value.backward(lhs, node.children[0])
-    return jacs
+      self._value.backward(lhs, node.children[0], jacs)
 
 
 vec2tran = ExpMapEvaluator
@@ -50,12 +46,10 @@ class LogMapEvaluator(Evaluable):
     value = child.value.vec()
     return Node(value, child)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._transform.active:
       lhs = lhs @ se3op.vec2jacinv(node.value)
-      jacs = self._transform.backward(lhs, node.children[0])
-    return jacs
+      self._transform.backward(lhs, node.children[0], jacs)
 
 
 tran2vec = LogMapEvaluator
@@ -77,12 +71,10 @@ class InverseEvaluator(Evaluable):
     value = child.value.inverse()
     return Node(value, child)
 
-  def backward(self, lhs, node) -> Dict[StateKey, np.ndarray]:
-    jacs = dict()
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._transform.active:
       lhs = -lhs @ node.value.adjoint()
-      jacs = self._transform.backward(lhs, node.children[0])
-    return jacs
+      self._transform.backward(lhs, node.children[0], jacs)
 
 
 inv = InverseEvaluator
@@ -107,18 +99,12 @@ class ComposeEvaluator(Evaluable):
     value = child1.value @ child2.value
     return Node(value, child1, child2)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._transform1.active:
-      jacs = self._transform1.backward(lhs, node.children[0])
-
+      self._transform1.backward(lhs, node.children[0], jacs)
     if self._transform2.active:
       lhs = lhs @ node.children[0].value.adjoint()
-      jacs2 = self._transform2.backward(lhs, node.children[1])
-      jacs = self.merge_jacs(jacs, jacs2)
-
-    return jacs
+      self._transform2.backward(lhs, node.children[1], jacs)
 
 
 compose = ComposeEvaluator
@@ -143,19 +129,13 @@ class ComposeInverseEvaluator(Evaluable):
     value = child1.value @ child2.value.inverse()
     return Node(value, child1, child2)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._transform1.active:
-      jacs = self._transform1.backward(lhs, node.children[0])
-
+      self._transform1.backward(lhs, node.children[0], jacs)
     if self._transform2.active:
       tf_ba = node.children[0].value @ node.children[1].value.inverse()
       lhs = -lhs @ tf_ba.adjoint()
-      jacs2 = self._transform2.backward(lhs, node.children[1])
-      jacs = self.merge_jacs(jacs, jacs2)
-
-    return jacs
+      self._transform2.backward(lhs, node.children[1], jacs)
 
 
 compose_rinv = ComposeInverseEvaluator

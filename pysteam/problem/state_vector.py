@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Dict, List
 import numpy as np
+from typing import Dict, List
 
 from ..evaluable import StateKey, StateVar
 

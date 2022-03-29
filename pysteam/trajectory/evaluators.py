@@ -1,10 +1,8 @@
-from typing import Dict
 import numpy as np
 
 from pylgmath import se3op
 
-from ..evaluable import StateKey
-from ..evaluable import Evaluable, Node
+from ..evaluable import Evaluable, Node, Jacobians
 
 
 class JVelocityEvaluator(Evaluable):
@@ -26,19 +24,14 @@ class JVelocityEvaluator(Evaluable):
     value = se3op.vec2jac(xi.value) @ velocity.value
     return Node(value, xi, velocity)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     xi, velocity = node.children
 
     if self._xi.active:
-      jacs = self._xi.backward(-0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jac(xi.value), xi)
+      self._xi.backward(-0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jac(xi.value), xi, jacs)
 
     if self._velocity.active:
-      jacs2 = self._velocity.backward(lhs @ se3op.vec2jac(xi.value), velocity)
-      jacs = self.merge_jacs(jacs, jacs2)
-
-    return jacs
+      self._velocity.backward(lhs @ se3op.vec2jac(xi.value), velocity, jacs)
 
 
 j_velocity = JVelocityEvaluator
@@ -63,19 +56,14 @@ class JinvVelocityEvaluator(Evaluable):
     value = se3op.vec2jacinv(xi.value) @ velocity.value
     return Node(value, xi, velocity)
 
-  def backward(self, lhs, node):
-    jacs = dict()
-
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     xi, velocity = node.children
 
     if self._xi.active:
-      jacs = self._xi.backward(0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jacinv(xi.value), xi)
+      self._xi.backward(0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jacinv(xi.value), xi, jacs)
 
     if self._velocity.active:
-      jacs2 = self._velocity.backward(lhs @ se3op.vec2jacinv(xi.value), velocity)
-      jacs = self.merge_jacs(jacs, jacs2)
-
-    return jacs
+      self._velocity.backward(lhs @ se3op.vec2jacinv(xi.value), velocity, jacs)
 
 
 jinv_velocity = JinvVelocityEvaluator
