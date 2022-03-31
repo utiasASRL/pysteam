@@ -1,18 +1,18 @@
 import numpy as np
 
-from ..evaluable import Evaluable, Node, Jacobians
-from ..evaluable import se3 as se3ev, vspace as vspaceev
-from .trajectory_var import Time, TrajectoryVar
+from ...evaluable import Evaluable, Node, Jacobians
+from ...evaluable import se3 as se3ev, vspace as vspaceev
+from .variable import Time, Variable
 from .evaluators import j_velocity, jinv_velocity
 
 
 class VelocityInterpolator(Evaluable):
 
-  def __init__(self, time: Time, knot1: TrajectoryVar, knot2: TrajectoryVar) -> None:
+  def __init__(self, time: Time, knot1: Variable, knot2: Variable) -> None:
     super().__init__()
 
-    self._knot1: TrajectoryVar = knot1
-    self._knot2: TrajectoryVar = knot2
+    self._knot1: Variable = knot1
+    self._knot2: Variable = knot2
 
     # calculate time constants
     tau = (time - knot1.time).seconds

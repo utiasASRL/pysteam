@@ -2,17 +2,17 @@ import numpy as np
 
 from pylgmath import se3op, Transformation
 
-from ..evaluable import Evaluable, Node, Jacobians
-from .trajectory_var import TrajectoryVar
+from ...evaluable import Evaluable, Node, Jacobians
+from .variable import Variable
 
 
-class TrajectoryPriorFactor(Evaluable):
+class PriorFactor(Evaluable):
 
-  def __init__(self, knot1: TrajectoryVar, knot2: TrajectoryVar) -> None:
+  def __init__(self, knot1: Variable, knot2: Variable) -> None:
     super().__init__()
 
-    self._knot1: TrajectoryVar = knot1
-    self._knot2: TrajectoryVar = knot2
+    self._knot1: Variable = knot1
+    self._knot2: Variable = knot2
 
   @property
   def active(self) -> bool:

@@ -3,12 +3,13 @@ from typing import List, Tuple
 
 from pylgmath import Transformation
 
-from ..evaluable.se3 import SE3StateVar
-from ..evaluable.vspace import VSpaceStateVar
-from . import Time, TrajectoryInterface
+from ...evaluable.se3 import SE3StateVar
+from ...evaluable.vspace import VSpaceStateVar
+from ..time import Time
+from .interface import Interface
 
 
-class TrajectoryInterpolator:
+class Interpolator:
   """A convenient class for trajectory interpolation that abstracts away the state variable and evaluator details in
   steam.
   """
@@ -19,7 +20,7 @@ class TrajectoryInterpolator:
       states (List[Tuple[float, np.ndarray, np.ndarray]]): list of states that is a tuple of
         (time (secs), T_k0, w_0k_in_k) where w_0k_in_k is body centric velocity.
     """
-    self._trajectory: TrajectoryInterface = TrajectoryInterface(allow_extrapolation=False)
+    self._trajectory: Interface = Interface(allow_extrapolation=False)
     self.add_states(*states)
 
   def add_states(self, *states: List[Tuple[float, np.ndarray, np.ndarray]]) -> None:

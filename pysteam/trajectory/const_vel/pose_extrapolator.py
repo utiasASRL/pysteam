@@ -2,8 +2,8 @@ import numpy as np
 
 from pylgmath import se3op, Transformation
 
-from ..evaluable import Evaluable, Node, Jacobians
-from .trajectory_var import Time
+from ...evaluable import Evaluable, Node, Jacobians
+from .variable import Time
 
 
 class PoseExtrapolator(Evaluable):

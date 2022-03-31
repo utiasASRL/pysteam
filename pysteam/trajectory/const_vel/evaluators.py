@@ -2,7 +2,7 @@ import numpy as np
 
 from pylgmath import se3op
 
-from ..evaluable import Evaluable, Node, Jacobians
+from ...evaluable import Evaluable, Node, Jacobians
 
 
 class JVelocityEvaluator(Evaluable):

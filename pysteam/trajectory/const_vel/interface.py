@@ -5,18 +5,19 @@ from typing import Dict, List
 
 from pylgmath import Transformation
 
-from ..evaluable import Evaluable
-from ..evaluable.se3 import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
-from ..evaluable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvaluator
-from ..problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
-from .trajectory_pose_extrapolator import PoseExtrapolator
-from .trajectory_pose_interpolator import PoseInterpolator
-from .trajectory_prior_factor import TrajectoryPriorFactor
-from .trajectory_var import Time, TrajectoryVar
-from .trajectory_velocity_interpolator import VelocityInterpolator
+from ...evaluable import Evaluable
+from ...evaluable.se3 import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
+from ...evaluable.vspace import VSpaceStateVar, AdditionEvaluator, NegationEvaluator
+from ...problem import L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
+from ..interface import Interface as TrajInterface
+from .pose_extrapolator import PoseExtrapolator
+from .pose_interpolator import PoseInterpolator
+from .prior_factor import PriorFactor
+from .variable import Time, Variable
+from .velocity_interpolator import VelocityInterpolator
 
 
-class TrajectoryInterface:
+class Interface(TrajInterface):
   """The trajectory class wraps a set of state variables to provide an interface that allows for continuous-time pose
   interpolation.
   """
@@ -26,7 +27,7 @@ class TrajectoryInterface:
     self._allow_extrapolation: bool = allow_extrapolation
 
     # prior factors
-    self._knots: Dict[int, TrajectoryVar] = dict()
+    self._knots: Dict[int, Variable] = dict()
     self._ordered_nsecs_valid = True
     self._ordered_nsecs: np.ndarray = np.array([])
 
@@ -35,7 +36,7 @@ class TrajectoryInterface:
 
   def add_knot(self,
                *,
-               knot: TrajectoryVar = None,
+               knot: Variable = None,
                time: Time = None,
                T_k0: Evaluable = None,
                w_0k_ink: Evaluable = None) -> None:
@@ -45,7 +46,7 @@ class TrajectoryInterface:
       self._ordered_nsecs_valid = False
     elif time is not None and T_k0 is not None and w_0k_ink is not None:
       assert not time.nanosecs in self._knots, "Knot already exists."
-      self._knots[time.nanosecs] = TrajectoryVar(time, T_k0, w_0k_ink)
+      self._knots[time.nanosecs] = Variable(time, T_k0, w_0k_ink)
       self._ordered_nsecs_valid = False
     else:
       raise ValueError("Invalid input combination.")
@@ -127,7 +128,7 @@ class TrajectoryInterface:
         noise_model = StaticNoiseModel(Qi_inv, 'information')
 
         # create cost term
-        error_func = TrajectoryPriorFactor(knot1, knot2)
+        error_func = PriorFactor(knot1, knot2)
         cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
 
         cost_terms.append(cost_term)

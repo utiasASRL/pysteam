@@ -1,7 +1,3 @@
-from .trajectory_var import Time, TrajectoryVar
-from .trajectory_prior_factor import TrajectoryPriorFactor
-from .trajectory_pose_extrapolator import PoseExtrapolator
-from .trajectory_pose_interpolator import PoseInterpolator
-from .trajectory_velocity_interpolator import VelocityInterpolator
-from .trajectory_interface import TrajectoryInterface
-from .trajectory_interpolator import TrajectoryInterpolator
+from .interface import Interface
+from .time import Time
+from . import const_vel
