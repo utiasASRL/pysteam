@@ -139,3 +139,35 @@ class ComposeInverseEvaluator(Evaluable):
 
 
 compose_rinv = ComposeInverseEvaluator
+
+
+class ComposeVelocityEvaluator(Evaluable):
+  """Evaluator for the composition of two transformation matrices (with one inverted)."""
+
+  def __init__(self, transform, velocity):
+    super().__init__()
+    self._transform = transform
+    self._velocity = velocity
+
+  @property
+  def active(self) -> bool:
+    return self._transform.active or self._velocity.active
+
+  def forward(self):
+    child1 = self._transform.forward()
+    child2 = self._velocity.forward()
+
+    value = se3op.tranAd(child1.value.matrix()) @ child2.value
+    return Node(value, child1, child2)
+
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    if self._transform.active:
+      jac = -se3op.curlyhat(node.value)
+      # print(jac)
+      self._transform.backward(lhs @ jac, node.children[0], jacs)
+    if self._velocity.active:
+      jac = se3op.tranAd(node.children[0].value.matrix())
+      self._velocity.backward(lhs @ jac, node.children[1], jacs)
+
+
+compose_velocity = ComposeVelocityEvaluator
