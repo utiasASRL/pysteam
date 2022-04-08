@@ -163,7 +163,6 @@ class ComposeVelocityEvaluator(Evaluable):
   def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
     if self._transform.active:
       jac = -se3op.curlyhat(node.value)
-      # print(jac)
       self._transform.backward(lhs @ jac, node.children[0], jacs)
     if self._velocity.active:
       jac = se3op.tranAd(node.children[0].value.matrix())
