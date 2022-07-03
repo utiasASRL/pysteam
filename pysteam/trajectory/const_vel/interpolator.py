@@ -20,7 +20,7 @@ class Interpolator:
       states (List[Tuple[float, np.ndarray, np.ndarray]]): list of states that is a tuple of
         (time (secs), T_k0, w_0k_in_k) where w_0k_in_k is body centric velocity.
     """
-    self._trajectory: Interface = Interface(allow_extrapolation=False)
+    self._trajectory: Interface = Interface()
     self.add_states(*states)
 
   def add_states(self, *states: List[Tuple[float, np.ndarray, np.ndarray]]) -> None:

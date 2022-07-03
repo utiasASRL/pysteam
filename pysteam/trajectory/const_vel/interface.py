@@ -22,9 +22,8 @@ class Interface(TrajInterface):
   interpolation.
   """
 
-  def __init__(self, Qc_inv: np.ndarray = np.eye(6), allow_extrapolation: bool = True) -> None:
+  def __init__(self, Qc_inv: np.ndarray = np.eye(6)) -> None:
     self._Qc_inv: np.ndarray = Qc_inv
-    self._allow_extrapolation: bool = allow_extrapolation
 
     # prior factors
     self._knots: Dict[int, Variable] = dict()
@@ -34,29 +33,15 @@ class Interface(TrajInterface):
     self._pose_prior_factor = None
     self._velocity_prior_factor = None
 
-  def add_knot(self,
-               *,
-               knot: Variable = None,
-               time: Time = None,
-               T_k0: Evaluable = None,
-               w_0k_ink: Evaluable = None) -> None:
-    if knot is not None:
-      assert not knot.time.nanosecs in self._knots, "Knot already exists."
-      self._knots[knot.time.nanosecs] = knot
-      self._ordered_nsecs_valid = False
-    elif time is not None and T_k0 is not None and w_0k_ink is not None:
-      assert not time.nanosecs in self._knots, "Knot already exists."
-      self._knots[time.nanosecs] = Variable(time, T_k0, w_0k_ink)
-      self._ordered_nsecs_valid = False
-    else:
-      raise ValueError("Invalid input combination.")
+  def add_knot(self, time: Time, T_k0: Evaluable, w_0k_ink: Evaluable) -> None:
+    assert not time.nanosecs in self._knots, "Knot already exists."
+    self._knots[time.nanosecs] = Variable(time, T_k0, w_0k_ink)
+    self._ordered_nsecs_valid = False
 
   def add_pose_prior(self, time: Time, T_21: Transformation, cov: np.ndarray) -> None:
-    """Add a unary pose prior factor at a knot time.
-    Note that only a single pose prior should exist on a trajectory, adding a second will overwrite the first.
-    """
     assert self._knots, "Knot dictionary is empty."
     assert time.nanosecs in self._knots.keys(), "No knot at provided time."
+    assert self._pose_prior_factor is None, "A pose prior already exists."
 
     # get knot at specified time
     knot = self._knots[time.nanosecs]
@@ -72,11 +57,10 @@ class Interface(TrajInterface):
     self._pose_prior_factor = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
 
   def add_velocity_prior(self, time: Time, w_0k_ink: np.ndarray, cov: np.ndarray) -> None:
-    """Add a unary velocity prior factor at a knot time.
-    Note that only a single velocity prior should exist on a trajectory, adding a second will overwrite the first.
-    """
+    """Add a unary velocity prior factor at a knot time."""
     assert self._knots, "Knot dictionary is empty."
     assert time.nanosecs in self._knots.keys(), "No knot at provided time."
+    assert self._velocity_prior_factor is None, "A velocity prior already exists."
 
     # get knot at specified time
     knot = self._knots[time.nanosecs]
@@ -150,10 +134,8 @@ class Interface(TrajInterface):
       return self._knots[self._ordered_nsecs[idx]].pose
 
     if idx == 0 or idx == len(self._ordered_nsecs):
-      if not self._allow_extrapolation:
-        raise ValueError("Query time out-of-range with extrapolation disallowed.")
       # request time before the first knot
-      elif idx == 0:
+      if idx == 0:
         start_knot = self._knots[self._ordered_nsecs[0]]
         T_t_k_eval = PoseExtrapolator(start_knot.velocity, time - start_knot.time)
         return ComposeEvaluator(T_t_k_eval, start_knot.pose)
@@ -183,10 +165,8 @@ class Interface(TrajInterface):
       return self._knots[self._ordered_nsecs[idx]].velocity
 
     if idx == 0 or idx == len(self._ordered_nsecs):
-      if not self._allow_extrapolation:
-        raise ValueError("Query time out-of-range with extrapolation disallowed.")
       # request time before first knot
-      elif idx == 0:
+      if idx == 0:
         return self._knots[self._ordered_nsecs[0]].velocity
       # request time after last knot
       else:
