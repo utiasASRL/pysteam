@@ -8,9 +8,11 @@ from ..evaluable import Node, Jacobians
 class HomoPointStateVar(StateVar):
   """Variable wrapper of a 4x1 homogeneous point."""
 
-  def __init__(self, value: np.ndarray, *, scale: bool = True, **kwargs) -> None:
+  def __init__(self, value: np.ndarray, *, scale: bool = False, **kwargs) -> None:
     super().__init__(3, **kwargs)
     assert value.shape == (4, 1)
+    if scale == False:
+      assert value[3, 0] == 1.0
     self._value = value
     self._scale = scale
     self.refresh_homo_scaling()
@@ -31,12 +33,15 @@ class HomoPointStateVar(StateVar):
     self.refresh_homo_scaling()
 
   def update(self, perturbation: np.ndarray) -> None:
-    self.refresh_homo_scaling(True)
     self._value[:3] += perturbation
+    self.refresh_homo_scaling()
 
-  def refresh_homo_scaling(self, force=False) -> None:
-    if self._scale or force:
+  def refresh_homo_scaling(self) -> None:
+    if self._scale:
       # get length of xyz-portion of landmark
-      inv_mag = 1 / npla.norm(self._value[:3])
-      # update to be unit length
-      self._value *= inv_mag
+      mag = npla.norm(self._value[:3])
+      if mag == 0.0:
+        self._value[3] = 1.0
+      else:
+        # update to be unit length
+        self._value /= mag
