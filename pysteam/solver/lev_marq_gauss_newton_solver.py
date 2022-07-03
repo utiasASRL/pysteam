@@ -28,7 +28,6 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
     # build the system
     A, b = self.build_gauss_newton_terms()
     grad_norm = npla.norm(b)  # compute gradient norm for termination check
-    self._approx_hessian = A  # keep a copy of the LHS (i.e., the approximated Hessian)
 
     # perform LM search
     num_tr_decreases = 0

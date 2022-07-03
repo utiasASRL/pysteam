@@ -20,7 +20,6 @@ class LineSearchGaussNewtonSolver(GaussNewtonSolver):
     # build the system
     A, b = self.build_gauss_newton_terms()
     grad_norm = npla.norm(b)  # compute gradient norm for termination check
-    self._approx_hessian = A  # keep a copy of the LHS (i.e., the approximated Hessian)
 
     # solve the system
     perturbation = self.solve_gauss_newton(A, b)
