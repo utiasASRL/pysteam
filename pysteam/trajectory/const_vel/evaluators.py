@@ -99,3 +99,34 @@ class StateErrorEvaluator(Evaluable):
 
 
 state_error = StateErrorEvaluator
+
+class TwoStateErrorEvaluator(Evaluable):
+  """Evaluator for combined pose and velocity prior, for covariance interpolation"""
+
+  def __init__(self, knot1_error: Evaluable, knot2_error: Evaluable):
+    super().__init__()
+    self._knot1_error: Evaluable = knot1_error
+    self._knot2_error: Evaluable = knot2_error
+
+  @property
+  def active(self) -> bool:
+    return self._knot1_error.active or self._knot2_error.active
+
+  def forward(self) -> Node:
+    knot1_error = self._knot1_error.forward()
+    knot2_error = self._knot2_error.forward()
+
+    value = np.concatenate((knot1_error.value, knot2_error.value), axis=0)
+    return Node(value, knot1_error, knot2_error)
+
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    knot1_error, knot2_error = node.children
+
+    if self._knot1_error.active:
+      self._knot1_error.backward(lhs[..., :12], knot1_error, jacs)
+
+    if self._knot2_error.active:
+      self._knot2_error.backward(lhs[..., 12:], knot2_error, jacs)
+
+
+two_state_error = TwoStateErrorEvaluator

@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.linalg as npla
 from typing import Dict, List
 
 from pylgmath import Transformation
 
 from ...evaluable import Evaluable
 from ...evaluable import se3 as se3ev, vspace as vspaceev
-from ...problem import OptimizationProblem, L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
+from ...problem import StateVector, L2LossFunc, StaticNoiseModel, CostTerm, WeightedLeastSquareCostTerm
 from ...solver import Covariance
 from ..interface import Interface as TrajInterface
-from .evaluators import state_error
+from .evaluators import state_error, two_state_error
 from .pose_extrapolator import PoseExtrapolator
 from .pose_interpolator import PoseInterpolator
 from .prior_factor import PriorFactor
@@ -99,13 +100,7 @@ class Interface(TrajInterface):
       if (knot1.pose.active or knot1.velocity.active or knot2.pose.active or knot2.velocity.active):
 
         # generate 12 x 12 information matrix for GP prior factor
-        Qi_inv = np.zeros((12, 12))
-        one_over_dt = 1 / (knot2.time - knot1.time).seconds
-        one_over_dt2 = one_over_dt * one_over_dt
-        one_over_dt3 = one_over_dt2 * one_over_dt
-        Qi_inv[:6, :6] = 12 * one_over_dt3 * self._Qc_inv
-        Qi_inv[:6, 6:] = Qi_inv[6:, :6] = -6 * one_over_dt2 * self._Qc_inv
-        Qi_inv[6:, 6:] = 4 * one_over_dt * self._Qc_inv
+        Qi_inv = self._compute_Qinv(knot2.time - knot1.time)
         noise_model = StaticNoiseModel(Qi_inv, 'information')
 
         # create cost term
@@ -193,55 +188,112 @@ class Interface(TrajInterface):
 
     # extrapolate
     elif idx == 0 or idx == len(self._ordered_nsecs):
-      knot = self._knots[self._ordered_nsecs[idx]] if idx == 0 else self._knots[self._ordered_nsecs[-1]]
+      knot = self._knots[self._ordered_nsecs[0]] if idx == 0 else self._knots[self._ordered_nsecs[-1]]
 
       T_q0_var = se3ev.SE3StateVar(self.get_pose_interpolator(time).evaluate())
       w_0q_inq_var = vspaceev.VSpaceStateVar(self.get_velocity_interpolator(time).evaluate())
-      query_trajectory = Interface(self._Qc_inv)
-      query_trajectory.add_knot(knot.time, knot.pose, knot.velocity)
-      query_trajectory.add_knot(time, T_q0_var, w_0q_inq_var)
+      knotq = Variable(time, T_q0_var, w_0q_inq_var)
 
+      #
+      state_vector = StateVector()
+      for var in [knot.pose, knot.velocity, knotq.pose, knotq.velocity]:
+        state_vector.add_state_var(var)
+
+      state_size = state_vector.get_state_size()
+      A = np.zeros((state_size, state_size))
+      b = np.zeros((state_size, 1))  # not used
+
+      # add motion prior
+      if idx == 0:  # extrapolate before first knot
+        loss_func = L2LossFunc()
+        noise_model = StaticNoiseModel(self._compute_Qinv(knot.time - knotq.time), 'information')
+        error_func = PriorFactor(knotq, knot)
+        cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+        cost_term.build_gauss_newton_terms(state_vector, A, b)
+      else:  # extrapolate after last knot
+        loss_func = L2LossFunc()
+        noise_model = StaticNoiseModel(self._compute_Qinv(knotq.time - knot.time), 'information')
+        error_func = PriorFactor(knot, knotq)
+        cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+        cost_term.build_gauss_newton_terms(state_vector, A, b)
+
+      # add knot covariance
       loss_func = L2LossFunc()
-
-      knot_noise = StaticNoiseModel(cov.query([knot.pose, knot.velocity]), "covariance")
-      knot_error = state_error(se3ev.se3_error(knot.pose, knot.pose.value),
+      noise_model = StaticNoiseModel(cov.query([knot.pose, knot.velocity]), "covariance")
+      error_func = state_error(se3ev.se3_error(knot.pose, knot.pose.value),
                                vspaceev.vspace_error(knot.velocity, knot.velocity.value))
-      knot_cost = WeightedLeastSquareCostTerm(knot_error, knot_noise, loss_func)
+      cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+      cost_term.build_gauss_newton_terms(state_vector, A, b)
 
-      problem = OptimizationProblem()
-      problem.add_state_var(knot.pose, knot.velocity, T_q0_var, w_0q_inq_var)
-      problem.add_cost_term(*query_trajectory.get_prior_cost_terms(), knot_cost)
-
-      query_cov = Covariance(problem)
-      return query_cov.query([T_q0_var, w_0q_inq_var])
+      # invert and extract the correspond block
+      indices_slices = [state_vector.get_state_indices(var.key) for var in [knotq.pose, knotq.velocity]]
+      indices = [i for s in indices_slices for i in range(s.start, s.stop)]
+      return npla.inv(A)[np.ix_(indices, indices)]
 
     # interpolate
     else:
+      # get knots before and after the query time
       knot1 = self._knots[self._ordered_nsecs[idx - 1]]
       knot2 = self._knots[self._ordered_nsecs[idx]]
-
+      # get interpolated pose and velocity
       T_q0_var = se3ev.SE3StateVar(self.get_pose_interpolator(time).evaluate())
       w_0q_inq_var = vspaceev.VSpaceStateVar(self.get_velocity_interpolator(time).evaluate())
-      query_trajectory = Interface(self._Qc_inv)
-      query_trajectory.add_knot(knot1.time, knot1.pose, knot1.velocity)
-      query_trajectory.add_knot(time, T_q0_var, w_0q_inq_var)
-      query_trajectory.add_knot(knot2.time, knot2.pose, knot2.velocity)
+      knotq = Variable(time, T_q0_var, w_0q_inq_var)
 
+      #
+      state_vector = StateVector()
+      for var in [knot1.pose, knot1.velocity, knotq.pose, knotq.velocity, knot2.pose, knot2.velocity]:
+        state_vector.add_state_var(var)
+
+      state_size = state_vector.get_state_size()
+      A = np.zeros((state_size, state_size))
+      b = np.zeros((state_size, 1))  # not used
+
+      # subtract prior term between knot1 and knot2
       loss_func = L2LossFunc()
+      noise_model = StaticNoiseModel(self._compute_Qinv(knot2.time - knot1.time), 'information')
+      error_func = PriorFactor(knot1, knot2)
+      cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+      cost_term.build_gauss_newton_terms(state_vector, A, b)
 
-      knot1_noise = StaticNoiseModel(cov.query([knot1.pose, knot1.velocity]), "covariance")
+      A = -A  # negate because the above is what we subtract
+
+      # add prior term between knot1 and knotq
+      loss_func = L2LossFunc()
+      noise_model = StaticNoiseModel(self._compute_Qinv(knotq.time - knot1.time), 'information')
+      error_func = PriorFactor(knot1, knotq)
+      cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+      cost_term.build_gauss_newton_terms(state_vector, A, b)
+
+      # add prior term between knotq and knot2
+      loss_func = L2LossFunc()
+      noise_model = StaticNoiseModel(self._compute_Qinv(knot2.time - knotq.time), 'information')
+      error_func = PriorFactor(knotq, knot2)
+      cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+      cost_term.build_gauss_newton_terms(state_vector, A, b)
+
+      # add knot1 covariance
+      loss_func = L2LossFunc()
+      noise_model = StaticNoiseModel(cov.query([knot1.pose, knot1.velocity, knot2.pose, knot2.velocity]), "covariance")
       knot1_error = state_error(se3ev.se3_error(knot1.pose, knot1.pose.value),
                                 vspaceev.vspace_error(knot1.velocity, knot1.velocity.value))
-      knot1_cost = WeightedLeastSquareCostTerm(knot1_error, knot1_noise, loss_func)
-
-      knot2_noise = StaticNoiseModel(cov.query([knot2.pose, knot2.velocity]), "covariance")
       knot2_error = state_error(se3ev.se3_error(knot2.pose, knot2.pose.value),
                                 vspaceev.vspace_error(knot2.velocity, knot2.velocity.value))
-      knot2_cost = WeightedLeastSquareCostTerm(knot2_error, knot2_noise, loss_func)
+      error_func = two_state_error(knot1_error, knot2_error)
+      cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
+      cost_term.build_gauss_newton_terms(state_vector, A, b)
 
-      problem = OptimizationProblem()
-      problem.add_state_var(knot1.pose, knot1.velocity, T_q0_var, w_0q_inq_var, knot2.pose, knot2.velocity)
-      problem.add_cost_term(*query_trajectory.get_prior_cost_terms(), knot1_cost, knot2_cost)
+      # invert and extract the correspond block
+      indices_slices = [state_vector.get_state_indices(var.key) for var in [knotq.pose, knotq.velocity]]
+      indices = [i for s in indices_slices for i in range(s.start, s.stop)]
+      return npla.inv(A)[np.ix_(indices, indices)]
 
-      query_cov = Covariance(problem)
-      return query_cov.query([T_q0_var, w_0q_inq_var])
+  def _compute_Qinv(self, dt: Time):
+    Qinv = np.zeros((12, 12))
+    one_over_dt = 1 / dt.seconds
+    one_over_dt2 = one_over_dt * one_over_dt
+    one_over_dt3 = one_over_dt2 * one_over_dt
+    Qinv[:6, :6] = 12 * one_over_dt3 * self._Qc_inv
+    Qinv[:6, 6:] = Qinv[6:, :6] = -6 * one_over_dt2 * self._Qc_inv
+    Qinv[6:, 6:] = 4 * one_over_dt * self._Qc_inv
+    return Qinv
