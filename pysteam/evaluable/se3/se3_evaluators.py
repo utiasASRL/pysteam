@@ -170,3 +170,29 @@ class ComposeVelocityEvaluator(Evaluable):
 
 
 compose_velocity = ComposeVelocityEvaluator
+
+
+class SE3ErrorEvaluator(Evaluable):
+
+  def __init__(self, T_ab: Evaluable, T_ab_meas: Transformation):
+    super().__init__()
+    self._T_ab = T_ab
+    self._T_ab_meas = T_ab_meas
+
+  @property
+  def active(self) -> bool:
+    return self._T_ab.active
+
+  def forward(self) -> Node:
+    child = self._T_ab.forward()
+    value = (self._T_ab_meas @ child.value.inverse()).vec()
+    return Node(value, child)
+
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    if self._T_ab.active:
+      child = node.children[0]
+      lhs = -lhs @ se3op.vec2jacinv(node.value) @ (self._T_ab_meas @ child.value.inverse()).adjoint()
+      self._T_ab.backward(lhs, child, jacs)
+
+
+se3_error = SE3ErrorEvaluator

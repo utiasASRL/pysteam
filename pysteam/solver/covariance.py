@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as npla
 import scipy.sparse.linalg as spla
 
+from ..evaluable import StateVar
 from ..problem import OptimizationProblem, StateVector
 
 
@@ -22,9 +23,15 @@ class Covariance():
     else:
       self._covariance = npla.inv(self._approx_hessian)
 
-  def query(self, rvar, cvar=None):
-    if cvar is None:
-      cvar = rvar
-    rindices = self._state_vector.get_state_indices(rvar.key)
-    cindices = self._state_vector.get_state_indices(cvar.key)
-    return self._covariance[rindices, cindices].toarray()
+  def query(self, rvars: StateVar, cvars: StateVar = None):
+    if isinstance(rvars, StateVar):
+      rvars = [rvars]
+    if isinstance(cvars, StateVar):
+      cvars = [cvars]
+    if cvars is None:
+      cvars = rvars
+    rindices_slices = [self._state_vector.get_state_indices(rvar.key) for rvar in rvars]
+    cindices_slices = [self._state_vector.get_state_indices(cvar.key) for cvar in cvars]
+    rindices = [i for s in rindices_slices for i in range(s.start, s.stop)]
+    cindices = [i for s in cindices_slices for i in range(s.start, s.stop)]
+    return self._covariance[np.ix_(rindices, cindices)].toarray()

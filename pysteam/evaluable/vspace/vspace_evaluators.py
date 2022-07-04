@@ -77,3 +77,28 @@ class ScalarMultEvaluator(Evaluable):
 
 
 smult = ScalarMultEvaluator
+
+
+class VSpaceErrorEvaluator(Evaluable):
+  """Error evaluator for a vector space."""
+
+  def __init__(self, value: Evaluable, value_meas: np.ndarray) -> None:
+    super().__init__()
+    self._value: Evaluable = value
+    self._value_meas: np.ndarray = value_meas
+
+  @property
+  def active(self) -> bool:
+    return self._value.active
+
+  def forward(self) -> Node:
+    child = self._value.forward()
+    value = self._value_meas - child.value
+    return Node(value, child)
+
+  def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
+    if self._value.active:
+      self._value.backward(-lhs, node.children[0], jacs)
+
+
+vspace_error = VSpaceErrorEvaluator
