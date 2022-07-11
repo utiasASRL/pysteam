@@ -14,6 +14,12 @@ class Time:
   def nanosecs(self) -> int:
     return self._nsecs
 
+  def __eq__(self, other):
+    return self._nsecs == other._nsecs
+
+  def __hash__(self) -> int:
+    return hash(self._nsecs)
+
   def __sub__(self, time: Time):
     return Time(nsecs=self.nanosecs - time.nanosecs)
 
