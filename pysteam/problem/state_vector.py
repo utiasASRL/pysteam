@@ -65,10 +65,7 @@ class StateVector:
       state.state_var.update(perturbation[state.indices])
 
   def copy_values(self, other: StateVector) -> None:
-    """
-    Copy the values of 'other' into 'this' (states must already align, typically this means that one is already a deep
-    copy of the other)
-    """
+    """Copy the values of 'other' into 'this' (states must already align)."""
     assert self.get_num_states() == other.get_num_states()
     for k, v in self._state_vars.items():
       v.state_var.set_from_copy(other.get_state_var(k))
