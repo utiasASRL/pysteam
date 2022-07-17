@@ -16,6 +16,10 @@ class ExpMapEvaluator(Evaluable):
   def active(self) -> bool:
     return self._value.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._value.related_var_keys
+
   def forward(self) -> Node:
     child = self._value.forward()
     value = Transformation(xi_ab=child.value)
@@ -40,6 +44,10 @@ class LogMapEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._transform.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._transform.related_var_keys
 
   def forward(self) -> Node:
     child = self._transform.forward()
@@ -66,6 +74,10 @@ class InverseEvaluator(Evaluable):
   def active(self) -> bool:
     return self._transform.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._transform.related_var_keys
+
   def forward(self) -> Node:
     child = self._transform.forward()
     value = child.value.inverse()
@@ -91,6 +103,10 @@ class ComposeEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._transform1.active or self._transform2.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._transform1.related_var_keys | self._transform2.related_var_keys
 
   def forward(self) -> Node:
     child1 = self._transform1.forward()
@@ -121,6 +137,10 @@ class ComposeInverseEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._transform1.active or self._transform2.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._transform1.related_var_keys | self._transform2.related_var_keys
 
   def forward(self):
     child1 = self._transform1.forward()
@@ -153,6 +173,10 @@ class ComposeVelocityEvaluator(Evaluable):
   def active(self) -> bool:
     return self._transform.active or self._velocity.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._transform.related_var_keys | self._velocity.related_var_keys
+
   def forward(self):
     child1 = self._transform.forward()
     child2 = self._velocity.forward()
@@ -182,6 +206,10 @@ class SE3ErrorEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._T_ab.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._T_ab.related_var_keys
 
   def forward(self) -> Node:
     child = self._T_ab.forward()

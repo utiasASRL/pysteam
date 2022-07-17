@@ -35,6 +35,11 @@ class Evaluable(abc.ABC):
   def active(self) -> bool:
     """Returns whether or not an evaluator contains unlocked state variables."""
 
+  @property
+  @abc.abstractmethod
+  def related_var_keys(self) -> set:
+    """Returns a set of state variables that are involved in the evaluation."""
+
   @abc.abstractmethod
   def forward(self) -> Node:
     """Forward pass with operation recorded"""

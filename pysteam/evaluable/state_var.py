@@ -13,16 +13,21 @@ class StateVar(Evaluable):
   of the variable.
   """
 
-  def __init__(self, perturb_dim: int, *, locked: bool = False):
+  def __init__(self, perturb_dim: int, *, locked: bool = False, name: str = "") -> None:
     assert perturb_dim > 0, "Zero or negative perturbation dimension."
     self._perturb_dim: int = perturb_dim
     self._locked: bool = locked
+    self._name: str = name
     self._key: StateKey = StateKey()
 
   @property
   def active(self) -> bool:
     """Evaluable interface"""
     return not self.locked
+
+  @property
+  def related_var_keys(self) -> set:
+    return set() if self.locked else {self._key}
 
   @property
   @abc.abstractmethod
@@ -56,3 +61,7 @@ class StateVar(Evaluable):
   @locked.setter
   def locked(self, v: bool):
     self._locked = v
+
+  @property
+  def name(self) -> str:
+    return self._name

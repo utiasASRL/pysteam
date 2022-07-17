@@ -1,3 +1,4 @@
+import abc
 import array
 import numpy as np
 from typing import List, Tuple
@@ -45,6 +46,22 @@ class LazyCOOBuilder:
       self.rows.extend(value.rows)
       self.cols.extend(value.cols)
       self.data.extend(value.data)
+
+
+class Problem(abc.ABC):
+  """Interface for a "problem" class """
+
+  @abc.abstractmethod
+  def cost(self) -> float:
+    """Computes the cost from the collection of cost terms."""
+
+  @abc.abstractmethod
+  def get_state_vector(self) -> List[StateVar]:
+    """Gets reference to state vector (x) in the linear system."""
+
+  @abc.abstractmethod
+  def build_gauss_newton_terms(self) -> Tuple[np.ndarray, np.ndarray]:
+    """Computes the left-hand approximated Hessian (A) and right-hand gradient vector (b)."""
 
 
 class OptimizationProblem:

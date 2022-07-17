@@ -12,9 +12,21 @@ from .state_vector import StateVector
 class CostTerm(abc.ABC):
   """Interface for a 'cost term' class that contributes to the objective function."""
 
+  def __init__(self, *, name: str = "") -> None:
+    self._name = name
+
+  @property
+  def name(self) -> str:
+    return self._name
+
   @abc.abstractmethod
   def cost(self) -> float:
     """Computes the cost to the objective function"""
+
+  @property
+  @abc.abstractmethod
+  def related_var_keys(self) -> set:
+    """Returns the set of variables that are related to this cost term."""
 
   @abc.abstractmethod
   def build_gauss_newton_terms(self, state_vector: StateVector, A: np.ndarray, b: np.ndarray):
@@ -29,8 +41,8 @@ class CostTerm(abc.ABC):
 
 class WeightedLeastSquareCostTerm(CostTerm):
 
-  def __init__(self, error_func: Evaluable, noise_model: NoiseModel, loss_func: LossFunc):
-    super().__init__()
+  def __init__(self, error_func: Evaluable, noise_model: NoiseModel, loss_func: LossFunc, **kwargs) -> None:
+    super().__init__(**kwargs)
     self._error_func: Evaluable = error_func
     self._noise_model: NoiseModel = noise_model
     self._loss_func: LossFunc = loss_func
@@ -39,6 +51,10 @@ class WeightedLeastSquareCostTerm(CostTerm):
     error = self._error_func.evaluate()
     whitened_error = self._noise_model.get_whitened_error_norm(error)
     return self._loss_func.cost(whitened_error)
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._error_func.related_var_keys
 
   def build_gauss_newton_terms(self, state_vector: StateVector, A: np.ndarray, b: np.ndarray) -> None:
     # compute the weighted and whitened errors and jacobians

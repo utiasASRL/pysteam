@@ -14,6 +14,10 @@ class NegationEvaluator(Evaluable):
   def active(self) -> bool:
     return self._value.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._value.related_var_keys
+
   def forward(self) -> Node:
     child = self._value.forward()
     value = -child.value
@@ -38,6 +42,10 @@ class AdditionEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._lhs.active or self._rhs.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._lhs.related_var_keys | self._rhs.related_var_keys
 
   def forward(self) -> Node:
     lhs = self._lhs.forward()
@@ -66,6 +74,10 @@ class ScalarMultEvaluator(Evaluable):
   def active(self) -> bool:
     return self._value.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._value.related_var_keys
+
   def forward(self) -> Node:
     child = self._value.forward()
     value = self._scalar * child.value
@@ -90,6 +102,10 @@ class VSpaceErrorEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._value.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._value.related_var_keys
 
   def forward(self) -> Node:
     child = self._value.forward()
