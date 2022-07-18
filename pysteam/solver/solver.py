@@ -4,14 +4,13 @@ import timeit
 from typing import Any, Dict
 from copy import deepcopy
 
-from ..problem import OptimizationProblem, StateVector
+from ..problem import Problem, StateVector
 
 
 class Solver(abc.ABC):
 
-  def __init__(self, opt_prob: OptimizationProblem, **parameters: Dict[str, Any]) -> None:
-    self._problem = opt_prob
-    self._state_vector = StateVector()
+  def __init__(self, problem: Problem, **parameters: Dict[str, Any]) -> None:
+    self._problem = problem
     # solver parameters
     self._parameters = {
         "verbose": False,
@@ -23,9 +22,7 @@ class Solver(abc.ABC):
     self._parameters.update(**parameters)
 
     # set up state vector -- add all states that are not locked to vector
-    for state_var in self._problem.get_state_vars():
-      if not state_var.locked:
-        self._state_vector.add_state_var(state_var)
+    self._state_vector: StateVector = self._problem.get_state_vector()
 
     # create a backup state vector
     self._state_vector_backup = deepcopy(self._state_vector)
@@ -36,22 +33,6 @@ class Solver(abc.ABC):
     self._solver_converged = False
     self._curr_cost = self._prev_cost = self._problem.cost()
     self._pending_proposed_state = False
-
-  @property
-  def parameters(self) -> Dict[str, Any]:
-    return self._parameters
-
-  @property
-  def curr_iteration(self) -> int:
-    return self._curr_iteration
-
-  @property
-  def coverged(self) -> bool:
-    return self._solver_converged
-
-  @property
-  def termination_cause(self) -> str:
-    return self._term
 
   def optimize(self) -> None:
     # setup timer

@@ -56,6 +56,10 @@ class Problem(abc.ABC):
     """Computes the cost from the collection of cost terms."""
 
   @abc.abstractmethod
+  def get_num_of_cost_terms(self) -> int:
+    """Gets the number of cost terms in the problem."""
+
+  @abc.abstractmethod
   def get_state_vector(self) -> List[StateVar]:
     """Gets reference to state vector (x) in the linear system."""
 
@@ -64,12 +68,17 @@ class Problem(abc.ABC):
     """Computes the left-hand approximated Hessian (A) and right-hand gradient vector (b)."""
 
 
-class OptimizationProblem:
+class OptimizationProblem(Problem):
   """Container for state variables and cost terms associated with the optimization problem to be solved."""
 
-  def __init__(self) -> None:
+  def __init__(self, use_sparse_matrix = False) -> None:
+    super().__init__()
+    self._use_sparse_matrix = use_sparse_matrix
+
     self._cost_terms: List[CostTerm] = []
     self._state_vars: List[StateVar] = []
+
+    self._state_vector: StateVector = None
 
   def add_state_var(self, *state_vars: StateVar) -> None:
     """Adds state variables (either locked or unlocked)."""
@@ -83,24 +92,28 @@ class OptimizationProblem:
     """Computes the cost from the collection of cost terms."""
     return sum([x.cost() for x in self._cost_terms])
 
-  def get_state_vars(self) -> List[StateVar]:
-    """Gets reference to state variables."""
-    return self._state_vars
-
   def get_num_of_cost_terms(self) -> int:
     """Gets the total number of cost terms."""
     return len(self._cost_terms)
 
-  def build_gauss_newton_terms(self, state_vector: StateVector, sparse: bool) -> Tuple[np.ndarray, np.ndarray]:
+  def get_state_vector(self) -> List[StateVar]:
+    """Gets reference to state variables."""
+    self._state_vector = StateVector()
+    for state_var in self._state_vars:
+      if not state_var.locked:
+        self._state_vector.add_state_var(state_var)
+    return self._state_vector
+
+  def build_gauss_newton_terms(self) -> Tuple[np.ndarray, np.ndarray]:
     """Computes the left-hand approximated Hessian (A) and right-hand gradient vector (b)."""
-    state_size = state_vector.get_state_size()
+    state_size = self._state_vector.get_state_size()
     # equivalent to
     #   A = dok_matrix((state_size, state_size)) if sparse else np.zeros((state_size, state_size))
     #   ...
     #   return A.tocsr()
     # but faster
-    A = LazyCOOBuilder((state_size, state_size)) if sparse else np.zeros((state_size, state_size))
+    A = LazyCOOBuilder((state_size, state_size)) if self._use_sparse_matrix else np.zeros((state_size, state_size))
     b = np.zeros((state_size, 1))
     for cost_term in self._cost_terms:
-      cost_term.build_gauss_newton_terms(state_vector, A, b)
-    return A.tocoo().tocsr() if sparse else A, b
+      cost_term.build_gauss_newton_terms(self._state_vector, A, b)
+    return A.tocoo().tocsr() if self._use_sparse_matrix else A, b

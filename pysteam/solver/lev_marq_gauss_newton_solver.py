@@ -1,13 +1,14 @@
 import numpy as np
 import numpy.linalg as npla
+import scipy.sparse as sp_sparse
 
-from ..problem import OptimizationProblem
-from . import GaussNewtonSolver
+from ..problem import Problem
+from .gauss_newton_solver import GaussNewtonSolver
 
 
 class LevMarqGaussNewtonSolver(GaussNewtonSolver):
 
-  def __init__(self, problem: OptimizationProblem, **parameters) -> None:
+  def __init__(self, problem: Problem, **parameters) -> None:
     super().__init__(problem, **parameters)
     # override parameters
     self._parameters.update({
@@ -26,7 +27,7 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
     new_cost = self._prev_cost
 
     # build the system
-    A, b = self.build_gauss_newton_terms()
+    A, b = self._problem.build_gauss_newton_terms()
     grad_norm = npla.norm(b)  # compute gradient norm for termination check
 
     # perform LM search
@@ -64,8 +65,7 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
 
     # print report line if verbose option is enabled
     if (self._parameters["verbose"]):
-      print("Iteration: {0:4}  -  Cost: {1:10.4f}  -  TR Shrink: {2:6.3f}  -  AvP Ratio: {3:6.3f}".format(
-          self._curr_iteration, new_cost, num_tr_decreases, actual_to_predicted_ratio))
+      print(f"Iteration: {self._curr_iteration:4}  -  Cost: {new_cost:10.4f}  -  TR Shrink: {num_tr_decreases:6.3f}  -  AvP Ratio: {actual_to_predicted_ratio:6.3f}")
 
     return step_success, new_cost, grad_norm
 
@@ -74,7 +74,7 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
       A*x = b, A = (J^T*J + diagonalCoeff*diag(J^T*J))
     """
     # augment diagonal of the 'hessian' matrix
-    if self._parameters["use_sparse_matrix"]:
+    if sp_sparse.issparse(A):
       A.setdiag(A.diagonal() * (1 + self._diag_coeff))
     else:
       np.fill_diagonal(A, np.diag(A) * (1 + self._diag_coeff))
@@ -86,7 +86,7 @@ class LevMarqGaussNewtonSolver(GaussNewtonSolver):
       raise npla.LinAlgError('Decomposition Failure')
     finally:
       # revert diagonal of the 'hessian' matrix
-      if self._parameters["use_sparse_matrix"]:
+      if sp_sparse.issparse(A):
         A.setdiag(A.diagonal() / (1 + self._diag_coeff))
       else:
         np.fill_diagonal(A, np.diag(A) / (1 + self._diag_coeff))

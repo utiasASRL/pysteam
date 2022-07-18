@@ -1,13 +1,13 @@
 import numpy as np
 import numpy.linalg as npla
 
-from ..problem import OptimizationProblem
-from . import GaussNewtonSolver
+from ..problem import Problem
+from .gauss_newton_solver import GaussNewtonSolver
 
 
 class DoglegGaussNewtonSolver(GaussNewtonSolver):
 
-  def __init__(self, problem: OptimizationProblem, **parameters) -> None:
+  def __init__(self, problem: Problem, **parameters) -> None:
     super().__init__(problem, **parameters)
     # override parameters
     self._parameters.update({
@@ -27,7 +27,7 @@ class DoglegGaussNewtonSolver(GaussNewtonSolver):
     new_cost = self._prev_cost
 
     # build the system
-    A, b = self.build_gauss_newton_terms()
+    A, b = self._problem.build_gauss_newton_terms()
     grad_norm = npla.norm(b)  # compute gradient norm for termination check
 
     # get gradient descent step
@@ -92,9 +92,7 @@ class DoglegGaussNewtonSolver(GaussNewtonSolver):
 
     # print report line if verbose option is enabled
     if (self._parameters["verbose"]):
-      print(
-          "Iteration: {0:4}  -  Cost: {1:10.4f}  -  TR Shrink: {2:6.3f}  -  AvP Ratio: {3:6.3f}  -  Dogleg Segment: {4:15}"
-          .format(self._curr_iteration, new_cost, num_tr_decreases, actual_to_predicted_ratio, dogleg_segment))
+      print(f"Iteration: {self._curr_iteration:4}  -  Cost: {new_cost:10.4f}  -  TR Shrink: {num_tr_decreases:6.3f}  -  AvP Ratio: {actual_to_predicted_ratio:6.3f}  -  Dogleg Segment: {dogleg_segment:15}")
 
     return step_success, new_cost, grad_norm
 
