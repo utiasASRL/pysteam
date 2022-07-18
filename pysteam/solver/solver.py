@@ -34,6 +34,14 @@ class Solver(abc.ABC):
     self._curr_cost = self._prev_cost = self._problem.cost()
     self._pending_proposed_state = False
 
+  @property
+  def termination_cause(self) -> str:
+    return self._term
+
+  @property
+  def curr_iteration(self) -> int:
+    return self._curr_iteration
+
   def optimize(self) -> None:
     # setup timer
     start = timeit.default_timer()

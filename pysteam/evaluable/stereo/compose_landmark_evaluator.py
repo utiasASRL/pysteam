@@ -17,6 +17,10 @@ class ComposeLandmarkEvaluator(Evaluable):
   def active(self) -> bool:
     return self._transform.active or self._landmark.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._transform.related_var_keys | self._landmark.related_var_keys
+
   def forward(self) -> Node:
     transform_child = self._transform.forward()
     landmark_child = self._landmark.forward()

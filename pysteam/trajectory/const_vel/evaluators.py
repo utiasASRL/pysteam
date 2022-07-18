@@ -17,6 +17,10 @@ class JVelocityEvaluator(Evaluable):
   def active(self) -> bool:
     return self._xi.active or self._velocity.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._xi.related_var_keys | self._velocity.related_var_keys
+
   def forward(self) -> Node:
     xi = self._xi.forward()
     velocity = self._velocity.forward()
@@ -48,6 +52,10 @@ class JinvVelocityEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._xi.active or self._velocity.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._xi.related_var_keys | self._velocity.related_var_keys
 
   def forward(self) -> Node:
     xi = self._xi.forward()
@@ -81,6 +89,10 @@ class StateErrorEvaluator(Evaluable):
   def active(self) -> bool:
     return self._T_k0_error.active or self._w_0k_ink_error.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._T_k0_error.related_var_keys | self._w_0k_ink_error.related_var_keys
+
   def forward(self) -> Node:
     T_k0_error = self._T_k0_error.forward()
     w_0k_ink_error = self._w_0k_ink_error.forward()
@@ -100,6 +112,7 @@ class StateErrorEvaluator(Evaluable):
 
 state_error = StateErrorEvaluator
 
+
 class TwoStateErrorEvaluator(Evaluable):
   """Evaluator for combined pose and velocity prior, for covariance interpolation"""
 
@@ -111,6 +124,10 @@ class TwoStateErrorEvaluator(Evaluable):
   @property
   def active(self) -> bool:
     return self._knot1_error.active or self._knot2_error.active
+
+  @property
+  def related_var_keys(self) -> set:
+    return self._knot1_error.related_var_keys | self._knot2_error.related_var_keys
 
   def forward(self) -> Node:
     knot1_error = self._knot1_error.forward()

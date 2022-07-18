@@ -30,6 +30,10 @@ class P2PErrorEvaluator(Evaluable):
   def active(self) -> bool:
     return self._T_rq.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._T_rq.related_var_keys
+
   def forward(self) -> Node:
     child = self._T_rq.forward()
     value = self._D @ (self._reference - child.value.matrix() @ self._query)

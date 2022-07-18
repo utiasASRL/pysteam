@@ -36,6 +36,10 @@ class RadialVelErrorEvaluator(Evaluable):
   def active(self) -> bool:
     return self._w_iv_inv.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._w_iv_inv.related_var_keys
+
   def forward(self) -> Node:
     child = self._w_iv_inv.forward()
 

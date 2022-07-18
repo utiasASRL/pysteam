@@ -19,6 +19,10 @@ class PriorFactor(Evaluable):
     return ((self._knot1.pose.active or self._knot1.velocity.active) or
             (self._knot2.pose.active or self._knot2.velocity.active))
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._knot1.pose.related_var_keys | self._knot1.velocity.related_var_keys | self._knot2.pose.related_var_keys | self._knot2.velocity.related_var_keys
+
   def forward(self) -> Node:
     pose_node1 = self._knot1.pose.forward()
     velocity_node1 = self._knot1.velocity.forward()

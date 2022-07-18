@@ -20,6 +20,10 @@ class HomoPointErrorEvaluator(Evaluable):
   def active(self) -> bool:
     return self._pt.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._pt.related_var_keys
+
   def forward(self) -> Node:
     child = self._pt.forward()
     value = self._D @ (self._meas_pt - child.value)

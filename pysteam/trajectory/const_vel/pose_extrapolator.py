@@ -18,6 +18,10 @@ class PoseExtrapolator(Evaluable):
   def active(self) -> bool:
     return self._velocity.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._velocity.related_var_keys
+
   def forward(self) -> Node:
     child = self._velocity.forward()
     T_tk = Transformation(xi_ab=self._time.seconds * child.value)

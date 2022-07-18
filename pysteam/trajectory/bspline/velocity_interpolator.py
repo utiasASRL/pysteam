@@ -38,6 +38,10 @@ class VelocityInterpolator(Evaluable):
   def active(self) -> bool:
     return ((self._k1.c.active or self._k2.c.active) or (self._k3.c.active or self._k4.c.active))
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._k1.c.related_var_keys | self._k2.c.related_var_keys | self._k3.c.related_var_keys | self._k4.c.related_var_keys
+
   def forward(self) -> Node:
     k1 = self._k1.c.forward()
     k2 = self._k2.c.forward()

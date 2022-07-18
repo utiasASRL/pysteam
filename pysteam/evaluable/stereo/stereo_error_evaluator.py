@@ -58,6 +58,10 @@ class StereoErrorEvaluator(Evaluable):
   def active(self) -> bool:
     return self._landmark.active
 
+  @property
+  def related_var_keys(self) -> set:
+    return self._landmark.related_var_keys
+
   def forward(self) -> Node:
     child = self._landmark.forward()
 
