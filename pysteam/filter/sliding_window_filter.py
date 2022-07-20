@@ -110,11 +110,6 @@ class SlidingWindowFilter(Problem):
     A = np.zeros((state_size, state_size))
     b = np.zeros((state_size, 1))
 
-    # add the cached terms (always top-left block)
-    if self._fixed_A is not None:
-      A[:self._fixed_A.shape[0], :self._fixed_A.shape[1]] += self._fixed_A
-      b[:self._fixed_b.shape[0]] += self._fixed_b
-
     # remove the fixed cost terms
     active_cost_terms = []
     for cost_term in self._cost_terms:
@@ -125,6 +120,11 @@ class SlidingWindowFilter(Problem):
       else:
         active_cost_terms.append(cost_term)
     self._cost_terms = active_cost_terms
+
+    # add the cached terms (always top-left block)
+    if self._fixed_A is not None:
+      A[:self._fixed_A.shape[0], :self._fixed_A.shape[1]] += self._fixed_A
+      b[:self._fixed_b.shape[0]] += self._fixed_b
 
     # marginalize the fixed variables
     if fixed_state_size > 0:
