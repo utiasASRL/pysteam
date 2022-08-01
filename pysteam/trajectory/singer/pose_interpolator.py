@@ -49,7 +49,7 @@ class PoseInterpolator(Evaluable):
     xi_21 = se3ev.tran2vec(T_21)
     # calculate interpolated relative se3 algebra
     _t1 = vspaceev.mmult(w1, _lambda12)
-    _t2 = vspaceev.mmult(w2, _lambda13)
+    _t2 = vspaceev.mmult(dw1, _lambda13)
     _t3 = vspaceev.mmult(xi_21, _omega11)
     _t4 = vspaceev.mmult(jinv_velocity(xi_21, w2), _omega12)
     _t51 = vspaceev.mmult(vspaceev.smult(compose_curlyhat(jinv_velocity(xi_21, w2), w2), -0.5), _omega13)
