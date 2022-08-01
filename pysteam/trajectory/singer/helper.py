@@ -4,6 +4,7 @@ import numpy as np
 def getQ(dt: float, ad: np.ndarray, qcd: np.ndarray = np.ones(6)):
   # constants
   adinv = 1.0 / ad
+
   adt = ad * dt
   adt2 = adt * adt
   adt3 = adt2 * adt

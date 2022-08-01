@@ -1,11 +1,11 @@
 import numpy as np
-import numpy.linalg as npla
 
 from ...evaluable import Evaluable, Node, Jacobians
 from ...evaluable import se3 as se3ev, vspace as vspaceev
+from ..const_vel.evaluators import jinv_velocity
+from .evaluators import compose_curlyhat
+from .helper import getQ, getTran, getQinv
 from .variable import Time, Variable
-from .evaluators import jinv_velocity, compose_curlyhat
-from .helper import getQ, getTran
 
 
 class PoseInterpolator(Evaluable):
@@ -22,19 +22,13 @@ class PoseInterpolator(Evaluable):
     kappa = (knot2.time - time).seconds
 
     Q_tau = getQ(tau)
-    Q_T = getQ(T)
+    Qinv_T = getQinv(T)
     Tran_kappa = getTran(kappa)
     Tran_tau = getTran(tau)
     Tran_T = getTran(T)
 
-    Omega = Q_tau @ Tran_kappa.T @ npla.inv(Q_T)
+    Omega = Q_tau @ Tran_kappa.T @ Qinv_T
     Lambda = Tran_tau - Omega @ Tran_T
-
-    _omega11 = Omega[:6, :6]
-    _omega12 = Omega[:6, 6:12]
-    _omega13 = Omega[:6, 12:]
-    _lambda12 = Lambda[:6, 6:12]
-    _lambda13 = Lambda[:6, 12:]
 
     ## construct computation graph
     T1 = self._knot1.pose
@@ -47,14 +41,20 @@ class PoseInterpolator(Evaluable):
     T_21 = se3ev.compose_rinv(T2, T1)
     # get se3 algebra of relative matrix
     xi_21 = se3ev.tran2vec(T_21)
+    #
+    gamma11 = w1
+    gamma12 = dw1
+    gamma20 = xi_21
+    gamma21 = jinv_velocity(xi_21, w2)
+    gamma22 = vspaceev.add(vspaceev.smult(compose_curlyhat(jinv_velocity(xi_21, w2), w2), -0.5),
+                           jinv_velocity(xi_21, dw2))
     # calculate interpolated relative se3 algebra
-    _t1 = vspaceev.mmult(w1, _lambda12)
-    _t2 = vspaceev.mmult(dw1, _lambda13)
-    _t3 = vspaceev.mmult(xi_21, _omega11)
-    _t4 = vspaceev.mmult(jinv_velocity(xi_21, w2), _omega12)
-    _t51 = vspaceev.mmult(vspaceev.smult(compose_curlyhat(jinv_velocity(xi_21, w2), w2), -0.5), _omega13)
-    _t52 = vspaceev.mmult(jinv_velocity(xi_21, dw2), _omega13)
-    xi_i1 = vspaceev.add(_t1, vspaceev.add(_t2, vspaceev.add(_t3, vspaceev.add(_t4, vspaceev.add(_t51, _t52)))))
+    _t1 = vspaceev.smult(gamma11, Lambda[0, 1])
+    _t2 = vspaceev.smult(gamma12, Lambda[0, 2])
+    _t3 = vspaceev.smult(gamma20, Omega[0, 0])
+    _t4 = vspaceev.smult(gamma21, Omega[0, 1])
+    _t5 = vspaceev.smult(gamma22, Omega[0, 2])
+    xi_i1 = vspaceev.add(_t1, vspaceev.add(_t2, vspaceev.add(_t3, vspaceev.add(_t4, _t5))))
     # calculate interpolated relative transformation matrix
     T_i1 = se3ev.vec2tran(xi_i1)
     # compose to get global transform

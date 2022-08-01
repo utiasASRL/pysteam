@@ -17,6 +17,7 @@ from .pose_interpolator import PoseInterpolator
 from .prior_factor import PriorFactor
 from .variable import Time, Variable
 from .velocity_interpolator import VelocityInterpolator
+from .helper import getQinv
 
 
 class Interface(TrajInterface):
@@ -24,10 +25,10 @@ class Interface(TrajInterface):
   interpolation.
   """
 
-  def __init__(self, Qc_inv: np.ndarray = np.eye(6)) -> None:
-    self._Qc_inv: np.ndarray = Qc_inv
+  def __init__(self, qcd: np.ndarray = np.ones(6)) -> None:
+    assert qcd.shape == (6,), "qcd must be a (6,) vector"
+    self._qcd: np.ndarray = qcd
 
-    # prior factors
     self._knots: Dict[int, Variable] = dict()
     self._ordered_nsecs_valid = True
     self._ordered_nsecs: np.ndarray = np.array([])
@@ -82,7 +83,6 @@ class Interface(TrajInterface):
 
     if self._pose_prior_factor is not None:
       cost_terms.append(self._pose_prior_factor)
-
     if self._velocity_prior_factor is not None:
       cost_terms.append(self._velocity_prior_factor)
 
@@ -100,8 +100,8 @@ class Interface(TrajInterface):
       if (knot1.pose.active or knot1.velocity.active or knot2.pose.active or knot2.velocity.active):
 
         # generate 12 x 12 information matrix for GP prior factor
-        Qi_inv = self._compute_Qinv(knot2.time - knot1.time)
-        noise_model = StaticNoiseModel(Qi_inv, 'information')
+        Qinv = getQinv((knot2.time - knot1.time).seconds, self._qcd)
+        noise_model = StaticNoiseModel(Qinv, 'information')
 
         # create cost term
         error_func = PriorFactor(knot1, knot2)
@@ -206,13 +206,13 @@ class Interface(TrajInterface):
       # add motion prior
       if idx == 0:  # extrapolate before first knot
         loss_func = L2LossFunc()
-        noise_model = StaticNoiseModel(self._compute_Qinv(knot.time - knotq.time), 'information')
+        noise_model = StaticNoiseModel(getQinv((knot.time - knotq.time).seconds, self._qcd), 'information')
         error_func = PriorFactor(knotq, knot)
         cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
         cost_term.build_gauss_newton_terms(state_vector, A, b)
       else:  # extrapolate after last knot
         loss_func = L2LossFunc()
-        noise_model = StaticNoiseModel(self._compute_Qinv(knotq.time - knot.time), 'information')
+        noise_model = StaticNoiseModel(getQinv((knotq.time - knot.time).seconds, self._qcd), 'information')
         error_func = PriorFactor(knot, knotq)
         cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
         cost_term.build_gauss_newton_terms(state_vector, A, b)
@@ -251,7 +251,7 @@ class Interface(TrajInterface):
 
       # subtract prior term between knot1 and knot2
       loss_func = L2LossFunc()
-      noise_model = StaticNoiseModel(self._compute_Qinv(knot2.time - knot1.time), 'information')
+      noise_model = StaticNoiseModel(getQinv((knot2.time - knot1.time).seconds, self._qcd), 'information')
       error_func = PriorFactor(knot1, knot2)
       cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
       cost_term.build_gauss_newton_terms(state_vector, A, b)
@@ -260,14 +260,14 @@ class Interface(TrajInterface):
 
       # add prior term between knot1 and knotq
       loss_func = L2LossFunc()
-      noise_model = StaticNoiseModel(self._compute_Qinv(knotq.time - knot1.time), 'information')
+      noise_model = StaticNoiseModel(getQinv((knotq.time - knot1.time).seconds, self._qcd), 'information')
       error_func = PriorFactor(knot1, knotq)
       cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
       cost_term.build_gauss_newton_terms(state_vector, A, b)
 
       # add prior term between knotq and knot2
       loss_func = L2LossFunc()
-      noise_model = StaticNoiseModel(self._compute_Qinv(knot2.time - knotq.time), 'information')
+      noise_model = StaticNoiseModel(getQinv((knot2.time - knotq.time).seconds, self._qcd), 'information')
       error_func = PriorFactor(knotq, knot2)
       cost_term = WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
       cost_term.build_gauss_newton_terms(state_vector, A, b)
@@ -287,13 +287,3 @@ class Interface(TrajInterface):
       indices_slices = [state_vector.get_state_indices(var.key) for var in [knotq.pose, knotq.velocity]]
       indices = [i for s in indices_slices for i in range(s.start, s.stop)]
       return npla.inv(A)[np.ix_(indices, indices)]
-
-  def _compute_Qinv(self, dt: Time):
-    Qinv = np.zeros((12, 12))
-    one_over_dt = 1 / dt.seconds
-    one_over_dt2 = one_over_dt * one_over_dt
-    one_over_dt3 = one_over_dt2 * one_over_dt
-    Qinv[:6, :6] = 12 * one_over_dt3 * self._Qc_inv
-    Qinv[:6, 6:] = Qinv[6:, :6] = -6 * one_over_dt2 * self._Qc_inv
-    Qinv[6:, 6:] = 4 * one_over_dt * self._Qc_inv
-    return Qinv

@@ -1,10 +1,10 @@
 import numpy as np
-import numpy.linalg as npla
 
 from ...evaluable import Evaluable, Node, Jacobians
 from ...evaluable import se3 as se3ev, vspace as vspaceev
+from ..const_vel.evaluators import jinv_velocity
+from .evaluators import compose_curlyhat
 from .variable import Variable
-from .evaluators import jinv_velocity, compose_curlyhat
 
 
 class PriorFactor(Evaluable):

@@ -1,21 +1,50 @@
 import numpy as np
 
 
-def getQ(dt: float, qcd: np.ndarray = np.ones(6)):
-  Q11 = np.diag(qcd * (dt**5) / 20.0)
-  Q12 = np.diag(qcd * (dt**4) / 8.0)
-  Q13 = np.diag(qcd * (dt**3) / 6.0)
-  Q22 = np.diag(qcd * (dt**3) / 3.0)
-  Q23 = np.diag(qcd * (dt**2) / 2.0)
-  Q33 = np.diag(qcd * dt)
-  Q = np.block([[Q11, Q12, Q13], [Q12.T, Q22, Q23], [Q13.T, Q23.T, Q33]])
-  return Q
+def getQinv(dt: float, qcd: np.ndarray = None):
+  dtinv = 1.0 / dt
+
+  qinv00 = 720.0 * (dtinv**5)
+  qinv11 = 192.0 * (dtinv**3)
+  qinv22 = 9.0 * (dtinv)
+  qinv01 = qinv10 = (-360.0) * (dtinv**4)
+  qinv02 = qinv20 = (60.0) * (dtinv**3)
+  qinv12 = qinv21 = (-36.0) * (dtinv**2)
+
+  if qcd is None:
+    return np.array([
+        [qinv00, qinv01, qinv02],
+        [qinv10, qinv11, qinv12],
+        [qinv20, qinv21, qinv22],
+    ])
+
+  Qcinv = np.diag(1.0 / qcd)
+  return np.block([
+      [qinv00 * Qcinv, qinv01 * Qcinv, qinv02 * Qcinv],
+      [qinv10 * Qcinv, qinv11 * Qcinv, qinv12 * Qcinv],
+      [qinv20 * Qcinv, qinv21 * Qcinv, qinv22 * Qcinv],
+  ])
+
+
+def getQ(dt: float):
+  q00 = (dt**5) / 20.0
+  q11 = (dt**3) / 3.0
+  q22 = dt
+  q01 = q10 = (dt**4) / 8.0
+  q02 = q20 = (dt**3) / 6.0
+  q12 = q21 = (dt**2) / 2.0
+
+  return np.array([
+      [q00, q01, q02],
+      [q10, q11, q12],
+      [q20, q21, q22],
+  ])
 
 
 def getTran(dt: float):
-  Q11 = Q22 = Q33 = np.eye(6)
-  Q21 = Q31 = Q32 = np.zeros((6, 6))
-  Q12 = Q23 = dt * np.eye(6)
-  Q13 = 0.5 * (dt**2) * np.eye(6)
-  Tran = np.block([[Q11, Q12, Q13], [Q21, Q22, Q23], [Q31, Q32, Q33]])
+  Tran = np.array([
+      [1.0, dt, 0.5 * (dt**2)],
+      [0.0, 1.0, dt],
+      [0.0, 0.0, 1.0],
+  ])
   return Tran

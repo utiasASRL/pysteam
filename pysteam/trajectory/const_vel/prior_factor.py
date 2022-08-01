@@ -1,9 +1,9 @@
 import numpy as np
 
-from pylgmath import se3op, Transformation
-
 from ...evaluable import Evaluable, Node, Jacobians
+from ...evaluable import se3 as se3ev, vspace as vspaceev
 from .variable import Variable
+from .evaluators import jinv_velocity
 
 
 class PriorFactor(Evaluable):
@@ -14,6 +14,30 @@ class PriorFactor(Evaluable):
     self._knot1: Variable = knot1
     self._knot2: Variable = knot2
 
+    # constants
+    dt = (self._knot2.time - self._knot1.time).seconds
+
+    # construct computation graph
+    T1 = self._knot1.pose
+    w1 = self._knot1.velocity
+    T2 = self._knot2.pose
+    w2 = self._knot2.velocity
+
+    # get relative matrix info
+    T_21 = se3ev.compose_rinv(T2, T1)
+    # get se3 algebra of relative matrix
+    xi_21 = se3ev.tran2vec(T_21)
+
+    # pose error
+    _t1 = xi_21
+    _t2 = vspaceev.smult(w1, -dt)
+    self._ep = vspaceev.add(_t1, _t2)
+
+    # velocity error
+    _w1 = jinv_velocity(xi_21, w2)
+    _w2 = vspaceev.neg(w1)
+    self._ev = vspaceev.add(_w1, _w2)
+
   @property
   def active(self) -> bool:
     return ((self._knot1.pose.active or self._knot1.velocity.active) or
@@ -21,58 +45,20 @@ class PriorFactor(Evaluable):
 
   @property
   def related_var_keys(self) -> set:
-    return self._knot1.pose.related_var_keys | self._knot1.velocity.related_var_keys | self._knot2.pose.related_var_keys | self._knot2.velocity.related_var_keys
+    keys = set()
+    keys |= self._knot1.pose.related_var_keys
+    keys |= self._knot1.velocity.related_var_keys
+    keys |= self._knot2.pose.related_var_keys
+    keys |= self._knot2.velocity.related_var_keys
+    return keys
 
   def forward(self) -> Node:
-    pose_node1 = self._knot1.pose.forward()
-    velocity_node1 = self._knot1.velocity.forward()
-    pose_node2 = self._knot2.pose.forward()
-    velocity_node2 = self._knot2.velocity.forward()
-
-    T_21: Transformation = pose_node2.value @ pose_node1.value.inverse()
-    xi_21 = T_21.vec()
-    J_21_inv = se3op.vec2jacinv(xi_21)
-    dt = (self._knot2.time - self._knot1.time).seconds
-
-    error = np.empty((12, 1))
-    error[:6] = xi_21 - dt * velocity_node1.value
-    error[6:] = J_21_inv @ velocity_node2.value - velocity_node1.value
-
-    return Node(error, pose_node1, velocity_node1, pose_node2, velocity_node2)
+    ep = self._ep.forward()
+    ev = self._ev.forward()
+    e = np.concatenate((ep.value, ev.value), axis=0)
+    return Node(e, ep, ev)
 
   def backward(self, lhs: np.ndarray, node: Node, jacs: Jacobians) -> None:
-    pose_node1, velocity_node1, pose_node2, velocity_node2 = node.children
-
-    T_21: Transformation = pose_node2.value @ pose_node1.value.inverse()
-    xi_21 = T_21.vec()
-    J_21_inv = se3op.vec2jacinv(xi_21)
-    dt = (self._knot2.time - self._knot1.time).seconds
-
-    if self._knot1.pose.active:
-      Jinv_12: np.ndarray = J_21_inv @ T_21.adjoint()
-      jacobian = np.empty((12, 6))
-      jacobian[:6] = -Jinv_12
-      jacobian[6:] = -0.5 * se3op.curlyhat(velocity_node2.value) @ Jinv_12
-
-      self._knot1.pose.backward(lhs @ jacobian, pose_node1, jacs)
-
-    if self._knot2.pose.active:
-      jacobian = np.empty((12, 6))
-      jacobian[:6] = J_21_inv
-      jacobian[6:] = (0.5 * se3op.curlyhat(velocity_node2.value) @ J_21_inv)
-
-      self._knot2.pose.backward(lhs @ jacobian, pose_node2, jacs)
-
-    if self._knot1.velocity.active:
-      jacobian = np.empty((12, 6))
-      jacobian[:6] = -dt * np.eye(6)
-      jacobian[6:] = -np.eye(6)
-
-      self._knot1.velocity.backward(lhs @ jacobian, velocity_node1, jacs)
-
-    if self._knot2.velocity.active:
-      jacobian = np.empty((12, 6))
-      jacobian[:6] = np.zeros((6, 6))
-      jacobian[6:] = J_21_inv
-
-      self._knot2.velocity.backward(lhs @ jacobian, velocity_node2, jacs)
+    ep, ev = node.children
+    self._ep.backward(lhs[..., :6], ep, jacs)
+    self._ev.backward(lhs[..., 6:12], ev, jacs)

@@ -23,11 +23,12 @@ class Interface(TrajInterface):
   interpolation.
   """
 
-  def __init__(self, qcd: np.ndarray = np.ones((6, 1)), ad: np.ndarray = np.ones((6, 1))) -> None:
-    self._qcd: np.ndarray = qcd  # Qc diagonal
-    self._ad: np.ndarray = ad  # alpha diagonal
+  def __init__(self, ad: np.ndarray = np.ones((6, 1)), qcd: np.ndarray = np.ones((6, 1))) -> None:
+    assert qcd.shape == (6,), "qcd must be a (6,) vector"
+    assert ad.shape == (6,), "ad must be a (6,) vector"
+    self._ad: np.ndarray = ad
+    self._qcd: np.ndarray = qcd
 
-    # prior factors
     self._knots: Dict[int, Variable] = dict()
     self._ordered_nsecs_valid = True
     self._ordered_nsecs: np.ndarray = np.array([])
@@ -116,7 +117,8 @@ class Interface(TrajInterface):
       knot1 = self._knots[self._ordered_nsecs[t - 1]]
       knot2 = self._knots[self._ordered_nsecs[t]]
 
-      if (knot1.pose.active or knot1.velocity.active or knot2.pose.active or knot2.velocity.active):
+      if (knot1.pose.active or knot1.velocity.active or knot1.acceleration.active or knot2.pose.active or
+          knot2.velocity.active or knot2.acceleration.active):
 
         # generate 12 x 12 information matrix for GP prior factor
         Q = getQ((knot2.time - knot1.time).seconds, self._ad, self._qcd)
@@ -147,14 +149,14 @@ class Interface(TrajInterface):
     if idx == 0 or idx == len(self._ordered_nsecs):
       # request time before the first knot
       if idx == 0:
-        start_knot = self._knots[self._ordered_nsecs[0]]
         raise NotImplementedError("Requested time before first knot.")
+        # start_knot = self._knots[self._ordered_nsecs[0]]
         # T_t_k_eval = PoseExtrapolator(start_knot.velocity, time - start_knot.time)
         # return se3ev.compose(T_t_k_eval, start_knot.pose)
       # request time after the last knot
       else:
-        end_knot = self._knots[self._ordered_nsecs[-1]]
         raise NotImplementedError("Requested time after last knot.")
+        # end_knot = self._knots[self._ordered_nsecs[-1]]
         # T_t_k_eval = PoseExtrapolator(end_knot.velocity, time - end_knot.time)
         # return se3ev.compose(T_t_k_eval, end_knot.pose)
 
