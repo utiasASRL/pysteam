@@ -17,8 +17,14 @@ class P2PErrorEvaluator(Evaluable):
     super().__init__()
 
     self._T_rq: Evaluable = T_rq
-    self._reference: np.ndarray = reference / reference[3]
-    self._query: np.ndarray = query / query[3]
+    if (reference.shape[0] == 3):
+      self._reference: np.ndarray = np.ones((4, 1))
+      self._reference[:3] = reference
+      self._query: np.ndarray = np.ones((4, 1))
+      self._query[:3] = query
+    else:
+      self._reference: np.ndarray = reference / reference[3]
+      self._query: np.ndarray = query / query[3]
 
     self._D = np.array([
         [1, 0, 0, 0],
