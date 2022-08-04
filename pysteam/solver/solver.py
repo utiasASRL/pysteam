@@ -1,6 +1,5 @@
 import abc
 import numpy as np
-import timeit
 from typing import Any, Dict
 from copy import deepcopy
 
@@ -43,17 +42,8 @@ class Solver(abc.ABC):
     return self._curr_iteration
 
   def optimize(self) -> None:
-    # setup timer
-    start = timeit.default_timer()
-
-    # optimization loop
     while not self._solver_converged:
       self.iterate()
-
-    # log
-    if self._parameters["verbose"]:
-      end = timeit.default_timer()
-      print("Total Optimization Time: {0:.4f} seconds".format(end - start))
 
   def iterate(self) -> None:
     # check colver converged

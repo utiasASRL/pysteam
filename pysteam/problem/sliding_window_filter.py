@@ -1,7 +1,8 @@
 import numpy as np
 import numpy.linalg as npla
 
-from ..problem import StateVector, Problem
+from .state_vector import StateVector
+from .problem import Problem
 
 
 class SlidingWindowFilter(Problem):
