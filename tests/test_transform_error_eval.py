@@ -1,6 +1,9 @@
 import numpy as np
 from pylgmath import se3op, Transformation
-from pysteam import state, evaluator, problem, solver
+from pysteam import problem, solver
+from pysteam.evaluable import SE3StateVar, LogMapEvaluator, InverseEvaluator, ComposeEvaluator
+
+np.set_printoptions(precision=2)
 
 
 def test_identity():
@@ -9,12 +12,13 @@ def test_identity():
   hat_T_ba = Transformation(xi_ab=xi_ab)
 
   # wrap as a variable
-  hat_T_ba_var = state.TransformStateVar(hat_T_ba)
+  hat_T_ba_var = SE3StateVar(hat_T_ba)
 
   # setup loss function, noise model, error_func and cost term
   loss_func = problem.L2LossFunc()
   noise_model = problem.StaticNoiseModel(np.eye(6), "covariance")
-  error_func = evaluator.TransformErrorEval(T=evaluator.TransformStateEvaluator(hat_T_ba_var))
+  error_func = LogMapEvaluator(hat_T_ba_var)
+
   cost_term = problem.WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
 
   # setup the optimization problem
@@ -42,12 +46,14 @@ def test_direct_measure():
   hat_T_ba = Transformation(xi_ab=perturb + xi_ab)
 
   # wrap as a variable
-  hat_T_ba_var = state.TransformStateVar(hat_T_ba)
+  meas_T_ba_var = SE3StateVar(meas_T_ba, locked=True)
+  hat_T_ba_var = SE3StateVar(hat_T_ba)
 
   # setup loss function, noise model, error_func and cost term
   loss_func = problem.L2LossFunc()
   noise_model = problem.StaticNoiseModel(np.eye(6), "covariance")
-  error_func = evaluator.TransformErrorEval(meas_T_21=meas_T_ba, T_21=evaluator.TransformStateEvaluator(hat_T_ba_var))
+  error_func = LogMapEvaluator(ComposeEvaluator(meas_T_ba_var, InverseEvaluator(hat_T_ba_var)))
+
   cost_term = problem.WeightedLeastSquareCostTerm(error_func, noise_model, loss_func)
 
   # setup the optimization problem
@@ -77,17 +83,20 @@ def test_relative_change():
   hat_T_20 = Transformation(T_ba=perturb[1] @ T_20.matrix())
 
   # wrap as a variable
-  hat_T_10_var = state.TransformStateVar(hat_T_10)
-  hat_T_20_var = state.TransformStateVar(hat_T_20)
+  hat_T_10_var = SE3StateVar(hat_T_10)
+  hat_T_20_var = SE3StateVar(hat_T_20)
+  meas_T_10_var = SE3StateVar(T_10, locked=True)
+  meas_T_21_var = SE3StateVar(meas_T_21, locked=True)
 
   # setup loss function, noise model, error_func and cost term
   loss_func = problem.L2LossFunc()
   noise_model = problem.StaticNoiseModel(np.eye(6), "covariance")
   # prior term on the first pose
-  error_func1 = evaluator.TransformErrorEval(meas_T_21=T_10, T_21=evaluator.TransformStateEvaluator(hat_T_10_var))
+  error_func1 = LogMapEvaluator(ComposeEvaluator(meas_T_10_var, InverseEvaluator(hat_T_10_var)))
   cost_term1 = problem.WeightedLeastSquareCostTerm(error_func1, noise_model, loss_func)
   # measured relative change
-  error_func2 = evaluator.TransformErrorEval(meas_T_21=meas_T_21, T_20=hat_T_20_var, T_10=hat_T_10_var)
+  error_func2 = LogMapEvaluator(
+      ComposeEvaluator(ComposeEvaluator(meas_T_21_var, hat_T_10_var), InverseEvaluator(hat_T_20_var)))
   cost_term2 = problem.WeightedLeastSquareCostTerm(error_func2, noise_model, loss_func)
 
   # setup the optimization problem

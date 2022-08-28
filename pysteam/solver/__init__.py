@@ -3,3 +3,4 @@ from .gauss_newton_solver import GaussNewtonSolver
 from .line_search_gauss_newton_solver import LineSearchGaussNewtonSolver
 from .lev_marq_gauss_newton_solver import LevMarqGaussNewtonSolver
 from .dogleg_gauss_newton_solver import DoglegGaussNewtonSolver
+from .covariance import Covariance

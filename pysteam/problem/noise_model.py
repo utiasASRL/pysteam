@@ -9,9 +9,6 @@ class NoiseEvaluator(abc.ABC):
   def evaluate(self) -> np.ndarray:
     """Evaluates the uncertainty based on a derived model."""
 
-  def evaluateCovariance(self):
-    return self.evaluate()
-
 
 class NoiseModel(abc.ABC):
 
@@ -63,17 +60,17 @@ class StaticNoiseModel(NoiseModel):
 class DynamicNoiseModel(NoiseModel):
 
   def __init__(self, evaluator: NoiseEvaluator) -> None:
-    super().__init__(evaluator.evaluateCovariance())
+    super().__init__(evaluator.evaluate())
     self._evaluator = evaluator
 
   def get_sqrt_information(self):
-    self.set_by_covariance(self._evaluator.evaluateCovariance())
+    self.set_by_covariance(self._evaluator.evaluate())
     return self._sqrt_information
 
   def get_whitened_error_norm(self, raw_error):
-    self.set_by_covariance(self._evaluator.evaluateCovariance())
-    return (self._sqrt_information @ raw_error).norm()
+    self.set_by_covariance(self._evaluator.evaluate())
+    return npla.norm(self._sqrt_information @ raw_error)
 
   def whiten_error(self, raw_error: np.ndarray) -> np.ndarray:
-    self.set_by_covariance(self._evaluator.evaluateCovariance())
+    self.set_by_covariance(self._evaluator.evaluate())
     return self._sqrt_information @ raw_error
