@@ -1,7 +1,7 @@
-import setuptools
-
 # read the contents of your README file
 from pathlib import Path
+
+import setuptools
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
@@ -17,6 +17,11 @@ setuptools.setup(
     url="https://github.com/utiasASRL/pysteam",
     packages=setuptools.find_packages(),
     license="BSD",
-    python_requires='>=3.8',
-    install_requires=["numpy>=1.21.0", "scipy>=1.7.0", "matplotlib>=3.4.2", "asrl-pylgmath>=1.0.2"],
+    python_requires=">=3.8",
+    install_requires=[
+        "numpy>=1.21.0",
+        "scipy>=1.7.0",
+        "matplotlib>=3.4.2",
+        "asrl-pylgmath>=1.0.2",
+    ],
 )

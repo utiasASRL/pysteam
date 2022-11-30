@@ -1,10 +1,12 @@
 """Convenience functions built on top of `make_vjp`."""
 from itertools import repeat, starmap
-from .wrap_util import unary_to_nary
+
 from .core import make_vjp as _make_vjp
-from .extend import primitive, defvjp_argnum, vspace
+from .extend import defvjp_argnum, primitive, vspace
+from .wrap_util import unary_to_nary
 
 make_vjp = unary_to_nary(_make_vjp)
+
 
 @unary_to_nary
 def grad(fun, x):
@@ -15,9 +17,12 @@ def grad(fun, x):
     should be scalar-valued. The gradient has the same type as the argument."""
     vjp, ans = _make_vjp(fun, x)
     if not vspace(ans).size == 1:
-        raise TypeError("Grad only applies to real scalar-output functions. "
-                        "Try jacobian, elementwise_grad or holomorphic_grad.")
+        raise TypeError(
+            "Grad only applies to real scalar-output functions. "
+            "Try jacobian, elementwise_grad or holomorphic_grad."
+        )
     return vjp(vspace(ans).ones())
+
 
 @unary_to_nary
 def value_and_grad(fun, x):
@@ -25,10 +30,13 @@ def value_and_grad(fun, x):
     in scipy.optimize"""
     vjp, ans = _make_vjp(fun, x)
     if not vspace(ans).size == 1:
-        raise TypeError("value_and_grad only applies to real scalar-output "
-                        "functions. Try jacobian, elementwise_grad or "
-                        "holomorphic_grad.")
+        raise TypeError(
+            "value_and_grad only applies to real scalar-output "
+            "functions. Try jacobian, elementwise_grad or "
+            "holomorphic_grad."
+        )
     return ans, vjp(vspace(ans).ones())
+
 
 @unary_to_nary
 def elementwise_grad(fun, x):
@@ -45,6 +53,7 @@ def elementwise_grad(fun, x):
 
 import numpy as np
 
+
 @unary_to_nary
 def jacobian(fun, x):
     """
@@ -55,8 +64,10 @@ def jacobian(fun, x):
     vjp, ans = _make_vjp(fun, x)
     ans_vspace = vspace(ans)
     in_vspace_shape = list(vspace(x).shape)
-    jacobian_shape = starmap(lambda a, b: a+b.shape,
-                             zip(repeat(ans_vspace.shape, len(in_vspace_shape)), in_vspace_shape))
+    jacobian_shape = starmap(
+        lambda a, b: a + b.shape,
+        zip(repeat(ans_vspace.shape, len(in_vspace_shape)), in_vspace_shape),
+    )
     grads = map(vjp, ans_vspace.standard_basis())
     # following operations are not autograd-friendly
     stacked = map(np.stack, zip(*grads))

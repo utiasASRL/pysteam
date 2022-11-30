@@ -1,17 +1,20 @@
 import operator
 
+
 def subvals(x, ivs):
     x_ = list(x)
     for i, v in ivs:
         x_[i] = v
     return tuple(x_)
 
+
 def subval(x, i, v):
     x_ = list(x)
     x_[i] = v
     return tuple(x_)
 
-def toposort(end_node, parents=operator.attrgetter('parents')):
+
+def toposort(end_node, parents=operator.attrgetter("parents")):
     child_counts = {}
     stack = [end_node]
     while stack:
