@@ -44,7 +44,7 @@ class Interface(TrajInterface):
         self._velocity_prior_factor = None
 
     def add_knot(self, time: Time, T_k0: Evaluable, w_0k_ink: Evaluable) -> None:
-        assert not time.nanosecs in self._knots, "Knot already exists."
+        assert time.nanosecs not in self._knots, "Knot already exists."
         self._knots[time.nanosecs] = Variable(time, T_k0, w_0k_ink)
         self._ordered_nsecs_valid = False
 

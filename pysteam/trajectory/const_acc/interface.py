@@ -27,7 +27,7 @@ class Interface(TrajInterface):
     interpolation.
     """
 
-    def __init__(self, qcd: np.ndarray = np.ones((6, 1))) -> None:
+    def __init__(self, qcd: np.ndarray = np.ones(6)) -> None:
         assert qcd.shape == (6,), "qcd must be a (6,) vector"
         self._qcd: np.ndarray = qcd
 
