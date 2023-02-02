@@ -32,7 +32,7 @@ class JVelocityEvaluator(Evaluable):
 
         if self._xi.active:
             self._xi.backward(
-                -0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jac(xi.value),
+                -0.5 * lhs @ se3op.curlyhat(velocity.value),
                 xi,
                 jacs,
             )
@@ -72,7 +72,7 @@ class JinvVelocityEvaluator(Evaluable):
 
         if self._xi.active:
             self._xi.backward(
-                0.5 * lhs @ se3op.curlyhat(velocity.value) @ se3op.vec2jacinv(xi.value),
+                0.5 * lhs @ se3op.curlyhat(velocity.value),
                 xi,
                 jacs,
             )
