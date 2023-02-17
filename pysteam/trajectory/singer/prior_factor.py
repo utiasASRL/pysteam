@@ -53,7 +53,7 @@ class PriorFactor(Evaluable):
         self._ev = vspaceev.add(_w1, vspaceev.add(_w2, _w3))
 
         # acceleration error
-        _dw1 = vspaceev.smult(compose_curlyhat(jinv_velocity(xi_21, dw2), dw2), -0.5)
+        _dw1 = vspaceev.smult(compose_curlyhat(jinv_velocity(xi_21, w2), w2), -0.5)
         _dw2 = jinv_velocity(xi_21, dw2)
         _dw3 = vspaceev.mmult(dw1, -C3)
         self._ea = vspaceev.add(_dw1, vspaceev.add(_dw2, _dw3))

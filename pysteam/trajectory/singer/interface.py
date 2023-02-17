@@ -31,7 +31,7 @@ class Interface(TrajInterface):
     """
 
     def __init__(
-        self, ad: np.ndarray = np.ones((6, 1)), qcd: np.ndarray = np.ones((6, 1))
+        self, ad: np.ndarray = np.ones(6), qcd: np.ndarray = np.ones(6)
     ) -> None:
         assert qcd.shape == (6,), "qcd must be a (6,) vector"
         assert ad.shape == (6,), "ad must be a (6,) vector"
@@ -49,7 +49,7 @@ class Interface(TrajInterface):
     def add_knot(
         self, time: Time, T_k0: Evaluable, w_0k_ink: Evaluable, dw_0k_ink: Evaluable
     ) -> None:
-        assert not time.nanosecs in self._knots, "Knot already exists."
+        assert time.nanosecs not in self._knots, "Knot already exists."
         self._knots[time.nanosecs] = Variable(time, T_k0, w_0k_ink, dw_0k_ink)
         self._ordered_nsecs_valid = False
 
