@@ -131,6 +131,28 @@ class Interface(TrajInterface):
 
         return cost_terms
 
+    def get_knot_index(self, time: Time):
+        assert self._knots, "Knot dictionary is empty."
+
+        if not self._ordered_nsecs_valid:
+            self._ordered_nsecs = np.array(sorted(self._knots.keys()))
+            self._ordered_nsecs_valid = True
+
+        idx = np.searchsorted(self._ordered_nsecs, time.nanosecs)
+        # request time exactly on a knot
+        if idx < len(self._ordered_nsecs) and self._ordered_nsecs[idx] == time.nanosecs:
+            return idx
+
+        assert idx != 0
+
+        if idx == len(self._ordered_nsecs):
+            if self._ordered_nsecs[idx - 1] == time.nanosecs:
+                return idx - 1
+            else:
+                raise RuntimeError("nope")
+
+        return idx - 1
+
     def get_pose_interpolator(self, time: Time):
         """Get pose evaluator at specified time stamp."""
         assert self._knots, "Knot dictionary is empty."

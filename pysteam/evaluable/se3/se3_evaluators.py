@@ -200,6 +200,7 @@ class SE3ErrorEvaluator(Evaluable):
         super().__init__()
         self._T_ab = T_ab
         self._T_ab_meas = T_ab_meas
+        self._time = 0.0
 
     @property
     def active(self) -> bool:
@@ -223,6 +224,20 @@ class SE3ErrorEvaluator(Evaluable):
                 @ (self._T_ab_meas @ child.value.inverse()).adjoint()
             )
             self._T_ab.backward(lhs, child, jacs)
+
+    def getMeasJacobians(self, node: Node):
+        child = node.children[0]
+        return (
+            -1
+            * se3op.vec2jacinv(node.value)
+            @ (self._T_ab_meas @ child.value.inverse()).adjoint()
+        )
+
+    def setTime(self, time: float):
+        self._time = time
+
+    def getTime(self):
+        return self._time
 
 
 se3_error = SE3ErrorEvaluator
